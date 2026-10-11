@@ -1,0 +1,35 @@
+# 数据库文件及 SQLite 附产物
+*.db
+*.db-wal
+*.db-shm
+data/
+
+# 本地环境配置与凭证
+.env
+.env.local
+*.credentials
+demo-credentials.env
+agentpermit-*.env
+ap-*.env
+# 更名前约定的凭证文件名
+aad-*.env
+
+# 凭证文件（用户本地保存 Agent/Service Token 用）
+*.token
+
+# 编译产物
+bin/
+/agentpermit
+/agentpermit-demo-machine-service
+# 更名前的产物名
+/server
+/demo-machine-service
+dist/
+
+# 临时文件
+*.log
+*.tmp
+tmp/
+.video_agent/
+out/
+_tacp

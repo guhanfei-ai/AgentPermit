@@ -1,0 +1,60 @@
+{{define "content"}}
+{{$p := .Data.Project}}
+{{$d := .Data.Doc}}
+<div class="page-head">
+  <h1>AGENTS.md · {{$p.Name}}</h1>
+  <div class="actions"><a class="btn" href="/projects/{{$p.Slug}}">返回项目</a></div>
+</div>
+<p class="muted">项目根的官方引导位置，普通留言不能覆盖它。对外（项目页与 Agent API）始终展示 <strong>latest 标记</strong>指向的已发布版本；草稿只在保存并发布后生效。latest 可回指旧版本实现回滚。</p>
+<div class="card">
+  <h2>草稿编辑</h2>
+  <form method="post" action="/projects/{{$p.Slug}}/agents-md/draft" class="form">
+    <input type="hidden" name="csrf_token" value="{{.CSRFToken}}">
+    <label>内容（以纯文本安全展示）<textarea name="body" rows="14" maxlength="100000">{{$d.DraftBody}}</textarea></label>
+    <div class="inline-fields">
+      <button type="submit" class="btn">保存草稿</button>
+      <span class="muted">{{with $d.DraftUpdatedAt}}草稿更新于 {{fmtTime .}}{{else}}尚未保存过草稿{{end}}</span>
+    </div>
+  </form>
+  <form method="post" action="/projects/{{$p.Slug}}/agents-md/publish" class="inline-form" data-confirm="发布会把当前草稿快照为新版本并把 latest 指向它，确定？">
+    <input type="hidden" name="csrf_token" value="{{.CSRFToken}}">
+    <button type="submit" class="btn btn-primary">发布草稿（并设为 latest）</button>
+  </form>
+</div>
+<div class="card">
+  <h2>版本历史</h2>
+  {{if .Data.Versions}}
+  <table>
+    <thead><tr><th>版本</th><th>发布时间</th><th>发布人</th><th>latest</th><th>操作</th></tr></thead>
+    <tbody>
+      {{range .Data.Versions}}
+      <tr>
+        <td>v{{.Version}}</td>
+        <td class="muted">{{fmtTime .PublishedAt}}</td>
+        <td>{{.PublishedByUsername}}</td>
+        <td>{{if eq .Version $d.LatestVersion}}<span class="badge ok">latest</span>{{else}}-{{end}}</td>
+        <td class="actions">
+          {{if ne .Version $d.LatestVersion}}
+          <form method="post" action="/projects/{{$p.Slug}}/agents-md/latest" class="inline-form" data-confirm="把 latest 指向旧版本实现回滚，确定？">
+            <input type="hidden" name="csrf_token" value="{{$.CSRFToken}}">
+            <input type="hidden" name="version" value="{{.Version}}">
+            <button type="submit" class="btn btn-small">设为 latest（回滚）</button>
+          </form>
+          {{end}}
+        </td>
+      </tr>
+      {{end}}
+    </tbody>
+  </table>
+  <details>
+    <summary>查看各版本内容</summary>
+    {{range .Data.Versions}}
+    <h3>v{{.Version}}{{if eq .Version $d.LatestVersion}}（latest）{{end}}</h3>
+    <pre class="spec">{{.Body}}</pre>
+    {{end}}
+  </details>
+  {{else}}
+  <div class="empty">尚未发布任何版本。保存草稿后点「发布草稿」生成 v1。</div>
+  {{end}}
+</div>
+{{end}}

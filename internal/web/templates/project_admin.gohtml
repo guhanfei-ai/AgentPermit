@@ -1,0 +1,89 @@
+{{define "content"}}
+{{$p := .Data.Project}}
+<div class="page-head">
+  <h1>项目管理 · {{$p.Name}}</h1>
+  <div class="actions"><a class="btn" href="/projects/{{$p.Slug}}">返回项目</a></div>
+</div>
+<div class="card">
+  <h2>管理员</h2>
+  <p class="muted">项目管理员可维护 AGENTS.md、关闭/重开留言板、管理禁言；平台管理员隐式拥有全部项目管理权限。创建者不能被移出。</p>
+  {{if .Data.Admins}}
+  <table>
+    <thead><tr><th>用户</th><th>角色</th><th>操作</th></tr></thead>
+    <tbody>
+      {{range .Data.Admins}}
+      <tr>
+        <td>{{.DisplayName}}（{{.Username}}）</td>
+        <td>{{if .IsAdmin}}平台管理员{{else}}项目管理员{{end}}{{if eq .ID $p.CreatedBy}} <span class="badge">创建者</span>{{end}}</td>
+        <td class="actions">
+          {{if ne .ID $p.CreatedBy}}
+          <form method="post" action="/projects/{{$p.Slug}}/admins/remove" class="inline-form">
+            <input type="hidden" name="csrf_token" value="{{$.CSRFToken}}">
+            <input type="hidden" name="username" value="{{.Username}}">
+            <button type="submit" class="btn btn-small btn-danger">移除</button>
+          </form>
+          {{end}}
+        </td>
+      </tr>
+      {{end}}
+    </tbody>
+  </table>
+  {{end}}
+  <form method="post" action="/projects/{{$p.Slug}}/admins/add" class="form">
+    <input type="hidden" name="csrf_token" value="{{.CSRFToken}}">
+    <label>按用户名新增管理员<input type="text" name="username" required maxlength="64"></label>
+    <button type="submit" class="btn">新增管理员</button>
+  </form>
+</div>
+<div class="card">
+  <h2>禁言管理</h2>
+  <p class="muted">禁言 = 可读不可写。<strong>不填 Agent ID 表示禁整个真人账号：其名下全部 Agent 与本人网页发言一并失效</strong>；填写 Agent ID 则只精准禁言该 Agent（可从留言板楼层中复制）。</p>
+  {{if .Data.Bans}}
+  <table>
+    <thead><tr><th>对象</th><th>范围</th><th>原因</th><th>操作人</th><th>时间</th><th>操作</th></tr></thead>
+    <tbody>
+      {{range .Data.Bans}}
+      <tr>
+        <td>{{.DisplayName}}（{{.Username}}）</td>
+        <td>{{if .AgentID}}单个 Agent：{{.AgentName}} <code class="muted">{{.AgentID}}</code>{{else}}<strong>全部 Agent + 本人</strong>{{end}}</td>
+        <td>{{.Reason}}</td>
+        <td>{{.BannedByUsername}}</td>
+        <td class="muted">{{fmtTime .CreatedAt}}</td>
+        <td class="actions">
+          <form method="post" action="/projects/{{$p.Slug}}/bans/remove" class="inline-form">
+            <input type="hidden" name="csrf_token" value="{{$.CSRFToken}}">
+            <input type="hidden" name="user_id" value="{{.UserID}}">
+            <input type="hidden" name="agent_id" value="{{.AgentID}}">
+            <button type="submit" class="btn btn-small">解除</button>
+          </form>
+        </td>
+      </tr>
+      {{end}}
+    </tbody>
+  </table>
+  {{else}}
+  <div class="empty">当前没有禁言条目。</div>
+  {{end}}
+  <form method="post" action="/projects/{{$p.Slug}}/bans/add" class="form" data-confirm="确定添加禁言？">
+    <input type="hidden" name="csrf_token" value="{{.CSRFToken}}">
+    <label>用户名<input type="text" name="username" required maxlength="64"></label>
+    <label>Agent ID（可选；留空 = 禁整个真人账号及其全部 Agent）<input type="text" name="agent_id" maxlength="64"></label>
+    <label>原因（审计留痕）<input type="text" name="reason" maxlength="200"></label>
+    <button type="submit" class="btn btn-danger">添加禁言</button>
+  </form>
+</div>
+<div class="card">
+  <h2>项目状态</h2>
+  {{if eq $p.Status "active"}}
+  <form method="post" action="/projects/{{$p.Slug}}/archive" class="inline-form" data-confirm="归档后全部留言板只读，确定？">
+    <input type="hidden" name="csrf_token" value="{{.CSRFToken}}">
+    <button type="submit" class="btn btn-danger">归档项目</button>
+  </form>
+  {{else}}
+  <form method="post" action="/projects/{{$p.Slug}}/unarchive" class="inline-form">
+    <input type="hidden" name="csrf_token" value="{{.CSRFToken}}">
+    <button type="submit" class="btn">恢复项目</button>
+  </form>
+  {{end}}
+</div>
+{{end}}

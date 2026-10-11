@@ -1,0 +1,49 @@
+{{define "content"}}
+<div class="page-head">
+  <h1>我的 Agent</h1>
+</div>
+<div class="card">
+  {{if .Data.Agents}}
+  <table>
+    <thead><tr><th>名称</th><th>描述</th><th>状态</th><th>Token 提示</th><th>创建时间</th><th>操作</th></tr></thead>
+    <tbody>
+      {{range .Data.Agents}}
+      <tr>
+        <td>{{.Name}}</td>
+        <td class="muted">{{.Description}}</td>
+        <td>{{if eq .Status "active"}}<span class="badge ok">active</span>{{else}}<span class="badge dead">revoked</span>{{end}}</td>
+        <td><code>{{.TokenHint}}</code></td>
+        <td class="muted">{{fmtTime .CreatedAt}}</td>
+        <td class="actions">
+          {{if eq .Status "active"}}
+          <form method="post" action="/agents/{{.ID}}/rotate" class="inline-form" data-confirm="轮换后旧 Token 立即失效，确定继续？">
+            <input type="hidden" name="csrf_token" value="{{$.CSRFToken}}">
+            <button type="submit" class="btn btn-small">轮换 Token</button>
+          </form>
+          <form method="post" action="/agents/{{.ID}}/revoke" class="inline-form" data-confirm="撤销后该 Agent 的 Token 立即失效且不可恢复，确定继续？">
+            <input type="hidden" name="csrf_token" value="{{$.CSRFToken}}">
+            <button type="submit" class="btn btn-small btn-danger">撤销 Agent</button>
+          </form>
+          {{else}}
+          <span class="muted">已撤销 {{fmtTime .RevokedAt.Time}}</span>
+          {{end}}
+        </td>
+      </tr>
+      {{end}}
+    </tbody>
+  </table>
+  {{else}}
+  <div class="empty">还没有 Agent。Agent 是你的账号授权给自动化程序的身份凭证，创建后凭 Token 访问 Agent API。</div>
+  {{end}}
+</div>
+<div class="card">
+  <h2>创建 Agent</h2>
+  <form method="post" action="/agents" class="form">
+    <input type="hidden" name="csrf_token" value="{{.CSRFToken}}">
+    <label>名称<input type="text" name="name" required maxlength="64"></label>
+    <label>描述<input type="text" name="description" maxlength="500" placeholder="这个 Agent 用来做什么"></label>
+    <button type="submit" class="btn btn-primary">创建并生成 Token</button>
+    <p class="muted">Token 只在创建成功后展示一次，请立即保存。</p>
+  </form>
+</div>
+{{end}}

@@ -1,0 +1,42 @@
+{{define "content"}}
+<div class="card">
+  <h1>{{if .Data.IsEdit}}编辑能力{{else}}新建能力{{end}}</h1>
+  <form method="post" action="{{if .Data.IsEdit}}/capabilities/{{.Data.Capability.ID}}{{else}}/capabilities{{end}}" class="form">
+    <input type="hidden" name="csrf_token" value="{{.CSRFToken}}">
+    <label>名称<input type="text" name="name" required maxlength="100" value="{{.Data.Capability.Name}}"></label>
+    {{if .Data.IsEdit}}
+    <p class="muted">slug：<code>{{.Data.Capability.Slug}}</code>（创建后不可修改）</p>
+    {{else}}
+    <label>slug（唯一标识，小写字母数字与连字符，创建后不可改）<input type="text" name="slug" required pattern="[a-z0-9][a-z0-9-]{1,62}" maxlength="63" value="{{.Data.Capability.Slug}}"></label>
+    {{end}}
+    <label>描述<input type="text" name="description" maxlength="500" value="{{.Data.Capability.Description}}"></label>
+    <label>能力内容（SPEC / 操作手册 RUNBOOK）<textarea name="spec_markdown" rows="8" maxlength="20000">{{.Data.Capability.SpecMarkdown}}</textarea></label>
+    <p class="muted">SPEC 定义契约与边界，RUNBOOK 记录步骤、验证与失败处理；标准流程可以继续使用 SOP 标题。内容以纯文本展示。</p>
+    <fieldset>
+      <legend>HTTP 工具绑定</legend>
+      <p class="muted">当前版本需填写 HTTP 地址与业务路径，用于声明独立服务的调用方式。</p>
+      <label>独立服务地址（仅 http/https；平台只保存声明，不会请求该地址）
+        <input type="text" name="endpoint_url" required maxlength="500" placeholder="http://127.0.0.1:9090" value="{{.Data.Capability.EndpointURL}}"></label>
+      <label>HTTP 方法
+        <select name="http_method">
+          {{$m := .Data.Capability.HTTPMethod}}
+          <option value="GET" {{if eq $m "GET"}}selected{{end}}>GET</option>
+          <option value="POST" {{if eq $m "POST"}}selected{{end}}>POST</option>
+          <option value="PUT" {{if eq $m "PUT"}}selected{{end}}>PUT</option>
+          <option value="DELETE" {{if eq $m "DELETE"}}selected{{end}}>DELETE</option>
+          <option value="PATCH" {{if eq $m "PATCH"}}selected{{end}}>PATCH</option>
+        </select></label>
+      <label>业务路径（以 / 开头，可含 {param} 占位）<input type="text" name="api_path" required maxlength="200" placeholder="/machines/{machine_id}/spec" value="{{.Data.Capability.APIPath}}"></label>
+    </fieldset>
+    <fieldset>
+      <legend>访问模式</legend>
+      <label class="radio"><input type="radio" name="access_mode" value="team" {{if eq .Data.Capability.AccessMode "team"}}checked{{end}}> team：默认团队内所有有效注册用户可访问</label>
+      <label class="radio"><input type="radio" name="access_mode" value="allowlist" {{if eq .Data.Capability.AccessMode "allowlist"}}checked{{end}}> allowlist：仅白名单中的用户可访问（黑名单始终优先）</label>
+    </fieldset>
+    <button type="submit" class="btn btn-primary">{{if .Data.IsEdit}}保存修改（草稿）{{else}}创建能力{{end}}</button>
+    {{if .Data.IsEdit}}<a class="btn" href="/capabilities/{{.Data.Capability.ID}}/versions">版本管理</a>{{end}}
+    <a class="btn" href="/capabilities">取消</a>
+    {{if .Data.IsEdit}}<p class="muted">保存只更新草稿；到「版本管理」发布后才对 Agent 生效（发布并把 latest 指向新版本）。</p>{{end}}
+  </form>
+</div>
+{{end}}

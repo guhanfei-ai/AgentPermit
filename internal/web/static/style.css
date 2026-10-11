@@ -1,0 +1,140 @@
+/* AgentPermit - 内网工具风格样式 */
+:root {
+  --bg: #f4f6f8;
+  --card: #ffffff;
+  --border: #d9dee3;
+  --text: #24313f;
+  --muted: #6b7a89;
+  --primary: #1668dc;
+  --primary-dark: #0f55b3;
+  --danger: #d4380d;
+  --ok: #237804;
+  --warn-bg: #fff7e6;
+  --warn-border: #ffd591;
+  --code-bg: #eef1f4;
+}
+* { box-sizing: border-box; }
+body {
+  margin: 0;
+  font-family: -apple-system, "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", sans-serif;
+  background: var(--bg);
+  color: var(--text);
+  font-size: 14px;
+  line-height: 1.6;
+}
+a { color: var(--primary); text-decoration: none; }
+a:hover { text-decoration: underline; }
+code, .mono { font-family: "SF Mono", Menlo, Consolas, monospace; font-size: 13px; }
+code { background: var(--code-bg); padding: 1px 5px; border-radius: 3px; }
+
+.topbar {
+  display: flex; align-items: center; gap: 24px;
+  background: #1f2d3d; color: #fff; padding: 0 24px; height: 52px;
+}
+.brand a { color: #fff; font-weight: 700; font-size: 16px; }
+.brand a:hover { text-decoration: none; }
+.brand-sub { color: #9fb3c8; font-size: 12px; margin-left: 8px; }
+.nav { display: flex; gap: 4px; flex: 1; }
+.nav a { color: #cfd8e3; padding: 6px 12px; border-radius: 4px; }
+.nav a:hover { background: #2c3e52; text-decoration: none; }
+.nav a.active { background: var(--primary); color: #fff; }
+.userbox { color: #cfd8e3; display: flex; align-items: center; gap: 8px; }
+.userbox .sep { color: #5c7089; }
+.userbox .who { font-size: 13px; }
+
+.container { max-width: 1080px; margin: 24px auto; padding: 0 16px; }
+.footer { text-align: center; color: var(--muted); font-size: 12px; padding: 24px 0 32px; }
+
+.card {
+  background: var(--card); border: 1px solid var(--border); border-radius: 8px;
+  padding: 20px 24px; margin-bottom: 16px;
+}
+.card.narrow { max-width: 460px; margin: 40px auto; }
+.card h1 { margin-top: 0; font-size: 20px; }
+.card h2 { font-size: 16px; margin: 18px 0 8px; }
+.tip h2 { margin-top: 0; }
+
+.page-head { display: flex; align-items: center; justify-content: space-between; margin: 8px 0 16px; }
+.page-head h1 { margin: 0; font-size: 22px; }
+
+h1 { font-size: 22px; }
+
+table { width: 100%; border-collapse: collapse; }
+th, td { text-align: left; padding: 8px 10px; border-bottom: 1px solid var(--border); vertical-align: middle; }
+th { color: var(--muted); font-weight: 600; font-size: 13px; white-space: nowrap; }
+td.actions { white-space: nowrap; }
+table.kv th { width: 120px; }
+.audit td { font-size: 13px; }
+
+.form label { display: block; margin-bottom: 12px; font-weight: 500; }
+.form input[type="text"], .form input[type="password"], .form select, .form textarea {
+  display: block; width: 100%; margin-top: 4px; padding: 8px 10px;
+  border: 1px solid var(--border); border-radius: 4px; font-size: 14px; font-family: inherit;
+}
+.form textarea { resize: vertical; }
+.form fieldset { border: 1px solid var(--border); border-radius: 6px; margin-bottom: 12px; }
+.form legend { font-weight: 600; padding: 0 6px; }
+label.radio { font-weight: 400; display: block; }
+.inline-fields { display: flex; gap: 12px; align-items: center; flex-wrap: wrap; }
+.inline-fields input[type="text"] { padding: 7px 10px; border: 1px solid var(--border); border-radius: 4px; }
+
+.btn {
+  display: inline-block; padding: 7px 14px; border: 1px solid var(--border); border-radius: 4px;
+  background: #fff; color: var(--text); cursor: pointer; font-size: 14px; font-family: inherit;
+}
+.btn:hover { border-color: var(--primary); color: var(--primary); text-decoration: none; }
+.btn-primary { background: var(--primary); border-color: var(--primary); color: #fff; }
+.btn-primary:hover { background: var(--primary-dark); color: #fff; }
+.btn-danger { color: var(--danger); border-color: var(--danger); }
+.btn-danger:hover { background: var(--danger); color: #fff; }
+.btn-small { padding: 4px 10px; font-size: 13px; }
+.btn-link { border: none; background: none; color: #cfd8e3; cursor: pointer; padding: 4px 8px; font-size: 14px; }
+.btn-link:hover { color: #fff; text-decoration: underline; }
+.inline-form { display: inline-block; margin: 0; }
+
+.badge { display: inline-block; padding: 1px 8px; border-radius: 10px; background: #e6f4ff; color: var(--primary); font-size: 12px; }
+.badge.ok { background: #f6ffed; color: var(--ok); }
+.badge.dead { background: #fff1f0; color: var(--danger); }
+
+.flash { padding: 10px 14px; border-radius: 6px; margin-bottom: 16px; }
+.flash-success { background: #f6ffed; border: 1px solid #b7eb8f; color: var(--ok); }
+.flash-error { background: #fff1f0; border: 1px solid #ffa39e; color: var(--danger); }
+
+.empty { color: var(--muted); padding: 24px 0; text-align: center; }
+.muted { color: var(--muted); }
+.warn { background: var(--warn-bg); border: 1px solid var(--warn-border); padding: 10px 14px; border-radius: 6px; }
+
+.token-box {
+  display: flex; align-items: center; gap: 12px; background: #0f172a; color: #7ee787;
+  padding: 14px 16px; border-radius: 6px; margin: 12px 0; flex-wrap: wrap;
+}
+.token-box code { background: none; color: inherit; font-size: 14px; word-break: break-all; }
+
+pre.code, pre.spec {
+  background: #0f172a; color: #e6edf3; padding: 14px 16px; border-radius: 6px;
+  overflow-x: auto; white-space: pre-wrap; word-break: break-all; font-size: 13px;
+}
+pre.spec { background: var(--code-bg); color: var(--text); font-family: inherit; }
+
+.grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+.grid-3 { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 16px; margin-bottom: 16px; }
+@media (max-width: 900px) { .grid-2, .grid-3 { grid-template-columns: 1fr; } }
+
+ol { padding-left: 20px; }
+ol li { margin-bottom: 6px; }
+
+/* ---- 留言板楼层 ---- */
+.floors { display: flex; flex-direction: column; gap: 12px; }
+.floor { border: 1px solid var(--border); border-radius: 8px; background: var(--card); }
+.floor-head {
+  display: flex; align-items: center; gap: 10px; flex-wrap: wrap;
+  padding: 8px 14px; border-bottom: 1px solid var(--border);
+  background: #fafbfc; border-radius: 8px 8px 0 0; font-size: 13px;
+}
+.floor-no { font-weight: 700; color: var(--primary); }
+.floor-author { font-weight: 600; }
+.floor-head code.agent-id { font-size: 11px; color: var(--muted); }
+.floor-body {
+  margin: 0; padding: 10px 14px; white-space: pre-wrap; word-break: break-word;
+  font-family: inherit; font-size: 14px;
+}

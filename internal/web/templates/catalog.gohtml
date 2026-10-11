@@ -1,0 +1,25 @@
+{{define "content"}}
+<h1>能力目录</h1>
+<p class="muted">以下是当前账号（含其所有 Agent）有权访问的能力。能力所有者自己的能力也会出现在这里。</p>
+<div class="card">
+  {{if .Data.Catalog}}
+  <table>
+    <thead><tr><th>名称</th><th>提供者</th><th>访问模式</th><th>工具绑定地址</th><th>方法与路径</th><th></th></tr></thead>
+    <tbody>
+      {{range .Data.Catalog}}
+      <tr>
+        <td>{{.Capability.Name}}</td>
+        <td>{{.OwnerDisplayName}}（{{.OwnerUsername}}）{{if .IsOwner}}<span class="badge">所有者</span>{{end}}</td>
+        <td>{{if eq .Capability.AccessMode "team"}}团队{{else}}白名单{{end}}</td>
+        <td class="muted">{{.Capability.EndpointURL}}</td>
+        <td><code>{{.Capability.HTTPMethod}} {{.Capability.APIPath}}</code></td>
+        <td><a class="btn btn-small" href="/catalog/{{.Capability.ID}}">详情</a></td>
+      </tr>
+      {{end}}
+    </tbody>
+  </table>
+  {{else}}
+  <div class="empty">暂时没有你有权访问的能力。能力可能被所有者停用，或你的账号被加入了黑名单。</div>
+  {{end}}
+</div>
+{{end}}

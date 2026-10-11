@@ -1,0 +1,105 @@
+{{define "content"}}
+{{$c := .Data.Capability}}
+{{$csrf := .CSRFToken}}
+<div class="page-head">
+  <h1>权限管理：{{$c.Name}}</h1>
+  <a class="btn" href="/capabilities">返回我的能力</a>
+</div>
+
+<div class="card">
+  <h2>访问模式</h2>
+  <p class="muted">当前：<strong>{{if eq $c.AccessMode "team"}}team（默认团队内有效用户可访问）{{else}}allowlist（仅白名单用户可访问）{{end}}</strong></p>
+  <form method="post" action="/capabilities/{{$c.ID}}/access/mode" class="form inline-fields">
+    <input type="hidden" name="csrf_token" value="{{$csrf}}">
+    <label class="radio"><input type="radio" name="access_mode" value="team" {{if eq $c.AccessMode "team"}}checked{{end}}> team</label>
+    <label class="radio"><input type="radio" name="access_mode" value="allowlist" {{if eq $c.AccessMode "allowlist"}}checked{{end}}> allowlist</label>
+    <button type="submit" class="btn btn-small btn-primary">切换访问模式</button>
+  </form>
+  <p class="warn">注意：加入白名单 ≠ 自动切换成白名单模式。模式切换与名单维护是两个独立操作。黑名单永远优先于白名单。</p>
+</div>
+
+<div class="card">
+  <h2>黑名单（按真人账号，覆盖其所有 Agent）</h2>
+  {{if .Data.Denylist}}
+  <table>
+    <thead><tr><th>用户</th><th>用户名</th><th>加入时间</th><th></th></tr></thead>
+    <tbody>
+      {{range .Data.Denylist}}
+      <tr>
+        <td>{{.DisplayName}}</td><td><code>{{.Username}}</code></td><td class="muted">{{fmtTime .CreatedAt}}</td>
+        <td><form method="post" action="/capabilities/{{$c.ID}}/denylist/remove" class="inline-form">
+          <input type="hidden" name="csrf_token" value="{{$csrf}}">
+          <input type="hidden" name="user_id" value="{{.UserID}}">
+          <button type="submit" class="btn btn-small">移除</button>
+        </form></td>
+      </tr>
+      {{end}}
+    </tbody>
+  </table>
+  {{else}}<div class="empty">黑名单为空。</div>{{end}}
+</div>
+
+<div class="card">
+  <h2>白名单（仅 allowlist 模式生效）</h2>
+  {{if .Data.Allowlist}}
+  <table>
+    <thead><tr><th>用户</th><th>用户名</th><th>加入时间</th><th></th></tr></thead>
+    <tbody>
+      {{range .Data.Allowlist}}
+      <tr>
+        <td>{{.DisplayName}}</td><td><code>{{.Username}}</code></td><td class="muted">{{fmtTime .CreatedAt}}</td>
+        <td><form method="post" action="/capabilities/{{$c.ID}}/allowlist/remove" class="inline-form">
+          <input type="hidden" name="csrf_token" value="{{$csrf}}">
+          <input type="hidden" name="user_id" value="{{.UserID}}">
+          <button type="submit" class="btn btn-small">移除</button>
+        </form></td>
+      </tr>
+      {{end}}
+    </tbody>
+  </table>
+  {{else}}<div class="empty">白名单为空。</div>{{end}}
+</div>
+
+<div class="card">
+  <h2>搜索用户（用于添加名单）</h2>
+  <form method="get" action="/capabilities/{{$c.ID}}/access" class="form inline-fields">
+    <input type="text" name="q" maxlength="32" placeholder="按用户名或显示名前缀搜索" value="{{.Data.Query}}">
+    <button type="submit" class="btn btn-small">搜索</button>
+  </form>
+  {{if .Data.SearchResults}}
+  <table>
+    <thead><tr><th>用户</th><th>用户名</th><th>状态</th><th>操作</th></tr></thead>
+    <tbody>
+      {{range .Data.SearchResults}}
+      <tr>
+        <td>{{.DisplayName}}</td><td><code>{{.Username}}</code></td>
+        <td>{{if eq .Status "active"}}<span class="badge ok">active</span>{{else}}<span class="badge dead">disabled</span>{{end}}</td>
+        <td class="actions">
+          <form method="post" action="/capabilities/{{$c.ID}}/denylist/add" class="inline-form" data-confirm="将该账号加入黑名单后，其所有 Agent 将立即无法调用该能力。确定？">
+            <input type="hidden" name="csrf_token" value="{{$csrf}}">
+            <input type="hidden" name="user_id" value="{{.ID}}">
+            <button type="submit" class="btn btn-small btn-danger">加入黑名单</button>
+          </form>
+          <form method="post" action="/capabilities/{{$c.ID}}/allowlist/add" class="inline-form">
+            <input type="hidden" name="csrf_token" value="{{$csrf}}">
+            <input type="hidden" name="user_id" value="{{.ID}}">
+            <button type="submit" class="btn btn-small">加入白名单</button>
+          </form>
+        </td>
+      </tr>
+      {{end}}
+    </tbody>
+  </table>
+  {{else if .Data.Query}}<div class="empty">没有匹配的用户。</div>{{end}}
+</div>
+
+<div class="card">
+  <h2>Service Token（独立服务验证凭证）</h2>
+  <p class="muted">当前凭证：{{.Data.Cred.TokenHint}}{{if .Data.Cred.RotatedAt}}，最近轮换 {{fmtTime .Data.Cred.RotatedAt.Time}}{{end}}</p>
+  <p class="muted">该 Token 只能用于本能力的 <code>POST /api/v1/service/authorize</code> 校验，不能当作 Agent Token，也不能登录网页。</p>
+  <form method="post" action="/capabilities/{{$c.ID}}/service-token/rotate" class="inline-form" data-confirm="轮换后旧 Service Token 立即失效，使用它的独立服务将无法通过校验，确定？">
+    <input type="hidden" name="csrf_token" value="{{$csrf}}">
+    <button type="submit" class="btn btn-primary">轮换 Service Token</button>
+  </form>
+</div>
+{{end}}

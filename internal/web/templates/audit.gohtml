@@ -1,0 +1,30 @@
+{{define "content"}}
+<h1>审计记录</h1>
+{{if .Data.IsAdmin}}
+<p class="muted">你是管理员，可查看全局审计（最近 {{.Data.Count}} 条）。普通用户只能看到与自己相关的记录。</p>
+{{else}}
+<p class="muted">以下是与你的账号相关的身份事件，以及你拥有能力上的访问事件（最近 {{.Data.Count}} 条）。</p>
+{{end}}
+<div class="card">
+  {{if .Data.Logs}}
+  <table class="audit">
+    <thead><tr><th>时间</th><th>事件</th><th>操作者</th><th>能力</th><th>结果</th><th>原因</th><th>Request ID</th></tr></thead>
+    <tbody>
+      {{range .Data.Logs}}
+      <tr>
+        <td class="muted">{{fmtTime .CreatedAt}}</td>
+        <td><code>{{.Event}}</code></td>
+        <td>{{if .ActorUsername}}{{.ActorUsername}}{{else}}<span class="muted">-</span>{{end}}</td>
+        <td>{{if .CapabilityName}}{{.CapabilityName}}{{else}}<span class="muted">-</span>{{end}}</td>
+        <td>{{if eq .Outcome "success"}}<span class="badge ok">成功</span>{{else}}<span class="badge dead">失败</span>{{end}}</td>
+        <td class="muted">{{.Reason}}</td>
+        <td class="muted mono">{{.RequestID}}</td>
+      </tr>
+      {{end}}
+    </tbody>
+  </table>
+  {{else}}
+  <div class="empty">暂无审计记录。</div>
+  {{end}}
+</div>
+{{end}}

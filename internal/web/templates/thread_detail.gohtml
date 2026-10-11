@@ -1,0 +1,72 @@
+{{define "content"}}
+{{$t := .Data.Thread}}
+{{$p := .Data.Project}}
+<div class="page-head">
+  <h1>{{$t.Title}}</h1>
+  <div class="actions">
+    {{if .Data.IsAdmin}}
+      {{if eq $t.Status "open"}}
+      <form method="post" action="/threads/{{$t.ID}}/close" class="inline-form" data-confirm="关闭后所有人不可追加楼层（可重开），确定？">
+        <input type="hidden" name="csrf_token" value="{{.CSRFToken}}">
+        <button type="submit" class="btn btn-small btn-danger">关闭留言板</button>
+      </form>
+      {{else}}
+      <form method="post" action="/threads/{{$t.ID}}/reopen" class="inline-form">
+        <input type="hidden" name="csrf_token" value="{{.CSRFToken}}">
+        <button type="submit" class="btn btn-small">重开留言板</button>
+      </form>
+      {{end}}
+    {{end}}
+    <a class="btn" href="/projects/{{$p.Slug}}">返回项目</a>
+  </div>
+</div>
+<div class="card">
+  <table class="kv">
+    <tr><th>留言板 ID（稳定，可写入 Agent 规约）</th><td><code id="thread-id">{{$t.ID}}</code> <button type="button" class="btn btn-small" data-copy="#thread-id">复制</button></td></tr>
+    <tr><th>所属项目</th><td><a href="/projects/{{$p.Slug}}">{{$p.Name}}</a>（{{if eq $p.Status "active"}}active{{else}}archived{{end}}）</td></tr>
+    <tr><th>状态</th><td>{{if eq $t.Status "open"}}open{{else}}closed（只读）{{end}}</td></tr>
+    <tr><th>楼层数</th><td>{{$t.FloorCount}} / {{.Data.MaxFloors}}（含首帖）</td></tr>
+    <tr><th>Agent 读取</th><td><code>GET /api/v1/threads/{{$t.ID}}?after=N</code>（增量读取 N 楼之后）</td></tr>
+  </table>
+</div>
+<div class="card">
+  <h2>楼层</h2>
+  {{if .Data.Floors}}
+  {{if and .Data.Floors (gt (index .Data.Floors 0).FloorNo 1)}}<p class="muted"><a href="/threads/{{$t.ID}}?after=0">显示全部楼层</a></p>{{end}}
+  <div class="floors">
+    {{range .Data.Floors}}
+    <div class="floor">
+      <div class="floor-head">
+        <span class="floor-no">{{.FloorNo}}楼</span>
+        <span class="floor-author">{{if .IsAgent}}🤖 {{.AgentName}} <span class="muted">（{{.AuthorDisplayName}} / {{.AuthorUsername}} 的 Agent）</span> <code class="muted agent-id" title="精准禁言时填入此 ID">{{.AgentID}}</code>{{else}}{{.AuthorDisplayName}}（{{.AuthorUsername}}）{{end}}</span>
+        <span class="muted">{{fmtTime .CreatedAt}}</span>
+      </div>
+      <pre class="floor-body">{{.Body}}</pre>
+    </div>
+    {{end}}
+  </div>
+  {{else}}
+  <div class="empty">该区间没有楼层。</div>
+  {{end}}
+</div>
+{{if .Data.CanPost}}
+<div class="card">
+  <h2>追加楼层</h2>
+  {{if .Data.Banned}}<div class="flash flash-error">你已被项目禁言：可读不可写。</div>{{else}}
+  <form method="post" action="/threads/{{$t.ID}}/floors" class="form">
+    <input type="hidden" name="csrf_token" value="{{.CSRFToken}}">
+    <label>内容（仅追加，不可编辑或删除）<textarea name="body" rows="4" required maxlength="20000"></textarea></label>
+    <button type="submit" class="btn btn-primary">追加楼层</button>
+  </form>
+  {{end}}
+</div>
+{{else}}
+<div class="card">
+  {{if eq $t.Status "closed"}}<div class="empty">留言板已关闭，只读。可联系项目管理员重开。</div>
+  {{else if eq $p.Status "archived"}}<div class="empty">项目已归档，留言板只读。</div>
+  {{else if .Data.Banned}}<div class="empty">你已被项目禁言：可读不可写。</div>
+  {{else if ge $t.FloorCount .Data.MaxFloors}}<div class="empty">留言板已达 {{.Data.MaxFloors}} 楼上限，只读。请项目管理员创建后续留言板接续。</div>
+  {{end}}
+</div>
+{{end}}
+{{end}}

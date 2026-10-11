@@ -1,0 +1,15 @@
+{{define "content"}}
+<div class="card">
+  <h1>Agent Token 一次性展示</h1>
+  <p>Agent「{{.Data.AgentName}}」的 Token 如下。这是唯一一次展示，离开本页后将无法再次查看，请立即保存。</p>
+  <div class="token-box"><code id="secret-token">{{.Data.Token}}</code>
+    <button type="button" class="btn btn-small" data-copy="#secret-token">复制</button>
+  </div>
+  <h2>配置示例</h2>
+  <pre class="code" id="export-block">export AGENTPERMIT_BASE_URL="{{.Data.BaseURL}}"
+export AGENTPERMIT_AGENT_TOKEN="{{.Data.Token}}"</pre>
+  <button type="button" class="btn btn-small" data-copy="#export-block">复制配置</button>
+  <p class="warn">安全提示：不要把 Token 提交到代码仓库或粘贴到不可信的地方。轮换或撤销 Agent 会立即使其失效。</p>
+  <p><a class="btn" href="/agents">返回我的 Agent</a></p>
+</div>
+{{end}}

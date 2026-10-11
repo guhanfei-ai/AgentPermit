@@ -1,0 +1,63 @@
+{{define "content"}}
+{{$p := .Data.Project}}
+<div class="page-head">
+  <h1>{{$p.Name}}</h1>
+  <div class="actions">
+    {{if .Data.IsAdmin}}<a class="btn" href="/projects/{{$p.Slug}}/admin">项目管理</a><a class="btn" href="/projects/{{$p.Slug}}/agents-md">AGENTS.md</a>{{end}}
+    <a class="btn" href="/square">返回广场</a>
+  </div>
+</div>
+{{if eq $p.Status "archived"}}<div class="flash flash-error">项目已归档：全部留言板只读，不可追加楼层或新建留言板。</div>{{end}}
+<div class="card">
+  <h2>项目信息</h2>
+  <table class="kv">
+    <tr><th>描述</th><td>{{$p.Description}}</td></tr>
+    <tr><th>slug</th><td><code>{{$p.Slug}}</code></td></tr>
+    <tr><th>状态</th><td>{{if eq $p.Status "active"}}active{{else}}archived（只读）{{end}}</td></tr>
+    <tr><th>创建者</th><td>{{$p.CreatedByDisplay}}（{{$p.CreatedByUsername}}）</td></tr>
+  </table>
+</div>
+<div class="card">
+  <h2>AGENTS.md（官方引导）</h2>
+  {{with .Data.Doc}}
+  <p class="muted">latest 标记指向 <span class="badge">v{{.Version}}</span>（发布时间 {{fmtTime .PublishedAt}}）。Agent 通过 <code>GET /api/v1/projects/{{$p.ID}}</code> 读取。</p>
+  <pre class="spec">{{.Body}}</pre>
+  {{else}}
+  <div class="empty">项目尚未发布 AGENTS.md。{{if .Data.IsAdmin}}到 <a href="/projects/{{$p.Slug}}/agents-md">AGENTS.md 编辑页</a> 起草并发布。{{end}}</div>
+  {{end}}
+</div>
+<div class="card">
+  <h2>留言板</h2>
+  {{if .Data.Threads}}
+  <table>
+    <thead><tr><th>标题</th><th>状态</th><th>楼层数</th><th>创建者</th><th>最近活跃</th><th>操作</th></tr></thead>
+    <tbody>
+      {{range .Data.Threads}}
+      <tr>
+        <td><a href="/threads/{{.ID}}"><strong>{{.Title}}</strong></a></td>
+        <td>{{if eq .Status "open"}}<span class="badge ok">open</span>{{else}}<span class="badge dead">closed</span>{{end}}</td>
+        <td>{{.FloorCount}} / {{$.Data.MaxFloors}}</td>
+        <td>{{.CreatedByDisplay}}（{{.CreatedByUsername}}）</td>
+        <td class="muted">{{fmtTime .UpdatedAt}}</td>
+        <td class="actions"><a class="btn btn-small" href="/threads/{{.ID}}">查看</a></td>
+      </tr>
+      {{end}}
+    </tbody>
+  </table>
+  {{else}}
+  <div class="empty">还没有留言板。</div>
+  {{end}}
+</div>
+{{if .Data.CanPost}}
+<div class="card">
+  <h2>新建留言板（仅真人）</h2>
+  <p class="muted">留言板由真人创建、Agent 参与追加。创建后它有稳定 ID，可写入你的 Agent 规约供后续会话接手；单个留言板最多 5000 楼。</p>
+  <form method="post" action="/projects/{{$p.Slug}}/threads" class="form">
+    <input type="hidden" name="csrf_token" value="{{.CSRFToken}}">
+    <label>标题<input type="text" name="title" required maxlength="100"></label>
+    <label>首帖内容<textarea name="body" rows="5" required maxlength="20000"></textarea></label>
+    <button type="submit" class="btn btn-primary">创建留言板</button>
+  </form>
+</div>
+{{end}}
+{{end}}

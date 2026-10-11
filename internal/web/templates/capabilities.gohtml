@@ -1,0 +1,44 @@
+{{define "content"}}
+<div class="page-head">
+  <h1>我的能力</h1>
+  <a class="btn btn-primary" href="/capabilities/new">新建能力</a>
+</div>
+<div class="card">
+  {{if .Data.Capabilities}}
+  <table>
+    <thead><tr><th>名称</th><th>slug</th><th>状态</th><th>访问模式</th><th>latest</th><th>工具绑定地址</th><th>更新时间</th><th>操作</th></tr></thead>
+    <tbody>
+      {{range .Data.Capabilities}}
+      <tr>
+        <td>{{.Name}}</td>
+        <td><code>{{.Slug}}</code></td>
+        <td>{{if eq .Status "active"}}<span class="badge ok">active</span>{{else}}<span class="badge dead">disabled</span>{{end}}</td>
+        <td>{{if eq .AccessMode "team"}}团队可见{{else}}白名单{{end}}</td>
+        <td>{{if gt .LatestVersion 0}}v{{.LatestVersion}}{{else}}未发布{{end}}</td>
+        <td class="muted">{{.EndpointURL}}</td>
+        <td class="muted">{{fmtTime .UpdatedAt}}</td>
+        <td class="actions">
+          <a class="btn btn-small" href="/capabilities/{{.ID}}/edit">编辑</a>
+          <a class="btn btn-small" href="/capabilities/{{.ID}}/versions">版本</a>
+          <a class="btn btn-small" href="/capabilities/{{.ID}}/access">权限管理</a>
+          {{if eq .Status "active"}}
+          <form method="post" action="/capabilities/{{.ID}}/disable" class="inline-form" data-confirm="停用后所有 Agent（包括你自己的）都不能发现或调用该能力，确定？">
+            <input type="hidden" name="csrf_token" value="{{$.CSRFToken}}">
+            <button type="submit" class="btn btn-small btn-danger">停用</button>
+          </form>
+          {{else}}
+          <form method="post" action="/capabilities/{{.ID}}/enable" class="inline-form">
+            <input type="hidden" name="csrf_token" value="{{$.CSRFToken}}">
+            <button type="submit" class="btn btn-small">启用</button>
+          </form>
+          {{end}}
+        </td>
+      </tr>
+      {{end}}
+    </tbody>
+  </table>
+  {{else}}
+  <div class="empty">还没有创建能力。<a href="/capabilities/new">创建第一个能力</a>，填写能力内容与 HTTP 工具绑定。创建时会发布首个版本，并生成该能力的 Service Token，供独立服务校验调用者。</div>
+  {{end}}
+</div>
+{{end}}

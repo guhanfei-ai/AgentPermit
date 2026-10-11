@@ -1,0 +1,36 @@
+{{define "content"}}
+<h1>用户管理（管理员）</h1>
+<p class="muted">平台管理员可管理用户、查看全局审计，并拥有全部项目的管理权限；能力调用仍按访问策略校验。</p>
+<div class="card">
+  <table>
+    <thead><tr><th>用户名</th><th>显示名</th><th>角色</th><th>状态</th><th>注册时间</th><th>操作</th></tr></thead>
+    <tbody>
+      {{range .Data.Users}}
+      <tr>
+        <td><code>{{.Username}}</code></td>
+        <td>{{.DisplayName}}</td>
+        <td>{{if eq .Role "admin"}}<span class="badge">admin</span>{{else}}user{{end}}</td>
+        <td>{{if eq .Status "active"}}<span class="badge ok">active</span>{{else}}<span class="badge dead">disabled</span>{{end}}</td>
+        <td class="muted">{{fmtTime .CreatedAt}}</td>
+        <td class="actions">
+          {{$isSelf := eq .ID $.Data.Me.ID}}
+          {{if $isSelf}}
+          <span class="muted">当前登录账号</span>
+          {{else if eq .Status "active"}}
+          <form method="post" action="/admin/users/{{.ID}}/disable" class="inline-form" data-confirm="禁用后该用户所有会话与名下全部 Agent Token 立即失效，确定？">
+            <input type="hidden" name="csrf_token" value="{{$.CSRFToken}}">
+            <button type="submit" class="btn btn-small btn-danger">禁用</button>
+          </form>
+          {{else}}
+          <form method="post" action="/admin/users/{{.ID}}/enable" class="inline-form">
+            <input type="hidden" name="csrf_token" value="{{$.CSRFToken}}">
+            <button type="submit" class="btn btn-small">启用</button>
+          </form>
+          {{end}}
+        </td>
+      </tr>
+      {{end}}
+    </tbody>
+  </table>
+</div>
+{{end}}
