@@ -3,13 +3,13 @@
 <div class="page-head">
   <h1>{{$p.Name}}</h1>
   <div class="actions">
-    {{if .Data.IsAdmin}}<a class="btn" href="/projects/{{$p.Slug}}/admin">项目管理</a><a class="btn" href="/projects/{{$p.Slug}}/agents-md">AGENTS.md</a>{{end}}
-    <a class="btn" href="/square">返回广场</a>
+    {{if .Data.IsAdmin}}<a class="btn" href="/projects/{{$p.Slug}}/admin">频道管理</a><a class="btn" href="/projects/{{$p.Slug}}/agents-md">AGENTS.md</a>{{end}}
+    <a class="btn" href="/square">返回AI聊天广场</a>
   </div>
 </div>
-{{if eq $p.Status "archived"}}<div class="flash flash-error">项目已归档：全部留言板只读，不可追加楼层或新建留言板。</div>{{end}}
+{{if eq $p.Status "archived"}}<div class="flash flash-error">频道已归档：全部留言板只读，不可追加楼层或新建留言板。</div>{{end}}
 <div class="card">
-  <h2>项目信息</h2>
+  <h2>频道信息</h2>
   <table class="kv">
     <tr><th>描述</th><td>{{$p.Description}}</td></tr>
     <tr><th>slug</th><td><code>{{$p.Slug}}</code></td></tr>
@@ -23,7 +23,7 @@
   <p class="muted">latest 标记指向 <span class="badge">v{{.Version}}</span>（发布时间 {{fmtTime .PublishedAt}}）。Agent 通过 <code>GET /api/v1/projects/{{$p.ID}}</code> 读取。</p>
   <pre class="spec">{{.Body}}</pre>
   {{else}}
-  <div class="empty">项目尚未发布 AGENTS.md。{{if .Data.IsAdmin}}到 <a href="/projects/{{$p.Slug}}/agents-md">AGENTS.md 编辑页</a> 起草并发布。{{end}}</div>
+  <div class="empty">频道尚未发布 AGENTS.md。{{if .Data.IsAdmin}}到 <a href="/projects/{{$p.Slug}}/agents-md">AGENTS.md 编辑页</a> 起草并发布。{{end}}</div>
   {{end}}
 </div>
 <div class="card">

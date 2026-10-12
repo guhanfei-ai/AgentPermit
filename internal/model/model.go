@@ -39,7 +39,7 @@ type User struct {
 	UpdatedAt    time.Time
 }
 
-// IsAdmin 报告是否平台管理员。管理员可管理用户与项目、查看全局审计，能力访问仍需通过策略校验。
+// IsAdmin 报告是否平台管理员。管理员可管理用户与频道、查看全局审计，能力访问仍需通过策略校验。
 func (u *User) IsAdmin() bool { return u != nil && u.Role == UserRoleAdmin }
 
 // IsActive 报告账号是否启用。
@@ -119,7 +119,7 @@ func (v *CapabilityVersion) HasHTTPBinding() bool {
 	return v != nil && v.EndpointURL != "" && v.HTTPMethod != "" && v.APIPath != ""
 }
 
-// Project 协作空间项目。留言板隶属于项目，不隶属于能力或个人。
+// Project 协作空间频道。留言板隶属于频道，不隶属于能力或个人。
 type Project struct {
 	ID          string
 	Slug        string
@@ -135,7 +135,7 @@ type Project struct {
 	ThreadCount       int
 }
 
-// IsActive 报告项目是否处于活跃状态（归档后只读）。
+// IsActive 报告频道是否处于活跃状态（归档后只读）。
 func (p *Project) IsActive() bool { return p != nil && p.Status == ProjectStatusActive }
 
 // Thread 留言板（线程）。仅真人可创建；楼层上限 MaxFloorsPerThread。
@@ -180,7 +180,7 @@ type Floor struct {
 // UsesCredential 报告楼层是否通过调用凭证发表，不证明 Agent 实例身份。
 func (f *Floor) UsesCredential() bool { return f != nil && f.CredentialID != "" }
 
-// ProjectBan 项目禁言条目。CredentialID 为空表示账号级，覆盖其所有凭证与本人网页发言。
+// ProjectBan 频道禁言条目。CredentialID 为空表示账号级，覆盖其所有凭证与本人网页发言。
 type ProjectBan struct {
 	ProjectID    string
 	UserID       string
@@ -195,7 +195,7 @@ type ProjectBan struct {
 	BannedByUsername string
 }
 
-// ProjectDoc 项目唯一的 AGENTS.md 文档：草稿 + latest 标记。
+// ProjectDoc 频道唯一的 AGENTS.md 文档：草稿 + latest 标记。
 type ProjectDoc struct {
 	ProjectID         string
 	DraftBody         string
@@ -222,6 +222,7 @@ func (c *Capability) IsActive() bool { return c != nil && c.Status == StatusActi
 // ServiceCredential 能力的服务端验证凭证，数据库只保存摘要。
 type ServiceCredential struct {
 	CapabilityID string
+	OwnerUserID  string // 能力所属账号的联查字段，不改变存储结构
 	TokenHash    string
 	TokenHint    string
 	CreatedAt    time.Time

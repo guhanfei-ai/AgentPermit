@@ -9,10 +9,6 @@ import (
 	"agentpermit/internal/store"
 )
 
-func (s *Server) pageDashboard(w http.ResponseWriter, r *http.Request) {
-	s.renderPage(w, r, http.StatusOK, "dashboard", "控制台", "dashboard", nil)
-}
-
 func (s *Server) pageCredentials(w http.ResponseWriter, r *http.Request) {
 	u := userFrom(r.Context())
 	credentials, err := s.store.ListAgentCredentialsByOwner(r.Context(), u.ID)
@@ -21,7 +17,7 @@ func (s *Server) pageCredentials(w http.ResponseWriter, r *http.Request) {
 		s.renderError(w, r, http.StatusInternalServerError, "服务暂时不可用，请稍后再试。")
 		return
 	}
-	s.renderPage(w, r, http.StatusOK, "agents", "我的调用凭证", "agents", map[string]any{"Credentials": credentials})
+	s.renderPage(w, r, http.StatusOK, "agents", "我的Agent凭证", "agents", map[string]any{"Credentials": credentials})
 }
 
 func (s *Server) pageCredentialCreate(w http.ResponseWriter, r *http.Request) {

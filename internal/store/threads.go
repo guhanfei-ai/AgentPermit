@@ -63,7 +63,7 @@ func (s *Store) CreateThread(ctx context.Context, t *model.Thread, firstFloorBod
 		CreatedAt:    t.CreatedAt,
 	}
 	return s.withTx(ctx, func(tx *sql.Tx) error {
-		// 归档项目不可新建留言板
+		// 归档频道不可新建留言板
 		var projectStatus string
 		if err := tx.QueryRowContext(ctx, `SELECT status FROM projects WHERE id=?`, t.ProjectID).Scan(&projectStatus); err != nil {
 			if errors.Is(err, sql.ErrNoRows) {
@@ -85,18 +85,18 @@ func (s *Store) CreateThread(ctx context.Context, t *model.Thread, firstFloorBod
 		if err != nil {
 			return err
 		}
-		// 项目 updated_at 联动，广场按最近活跃排序
+		// 频道 updated_at 联动，AI聊天广场按最近活跃排序
 		_, err = tx.ExecContext(ctx, `UPDATE projects SET updated_at=? WHERE id=?`, fmtTime(t.CreatedAt), t.ProjectID)
 		return err
 	})
 }
 
-// GetThreadByID 查询留言板（含项目状态等联查字段）。
+// GetThreadByID 查询留言板（含频道状态等联查字段）。
 func (s *Store) GetThreadByID(ctx context.Context, id string) (*model.Thread, error) {
 	return scanThread(s.db.QueryRowContext(ctx, `SELECT `+threadColumns+threadFrom+` WHERE t.id=?`, id))
 }
 
-// ListThreadsByProject 列出项目下的留言板，最近活跃在前。
+// ListThreadsByProject 列出频道下的留言板，最近活跃在前。
 func (s *Store) ListThreadsByProject(ctx context.Context, projectID string) ([]*model.Thread, error) {
 	rows, err := s.db.QueryContext(ctx, `SELECT `+threadColumns+threadFrom+` WHERE t.project_id=? ORDER BY t.updated_at DESC`, projectID)
 	if err != nil {
@@ -182,14 +182,14 @@ func (s *Store) ListFloors(ctx context.Context, threadID string, after, limit in
 	return out, rows.Err()
 }
 
-// AppendFloor 追加楼层：在单事务内复核项目状态、线程状态、禁言与容量后写入，
+// AppendFloor 追加楼层：在单事务内复核频道状态、线程状态、禁言与容量后写入，
 // 保证并发下的楼层号连续且不超上限。f.FloorNo 由本方法回填。
 //
 // 适用同一套校验：凭证请求传 credentialID；网页会话发言传空值（仅受账号级禁言约束）。
 func (s *Store) AppendFloor(ctx context.Context, threadID string, authorUserID, credentialID, body string) (*model.Floor, error) {
 	f := &model.Floor{ID: NewID(), ThreadID: threadID, AuthorUserID: authorUserID, CredentialID: credentialID, Body: body}
 	err := s.withTx(ctx, func(tx *sql.Tx) error {
-		// 复核线程与项目状态（以事务内读到的最新值为准）
+		// 复核线程与频道状态（以事务内读到的最新值为准）
 		var status, projectStatus string
 		var floorCount int
 		if err := tx.QueryRowContext(ctx, `SELECT t.status, p.status, t.floor_count

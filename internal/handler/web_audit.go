@@ -42,7 +42,7 @@ func auditPresentation(log *model.AuditLog) auditRow {
 	case "capability_created", "capability_updated", "capability_enabled", "capability_disabled", "capability_access_mode_changed", "capability_service_token_created", "capability_service_token_rotated", "capability_version_published", "capability_latest_moved":
 		row.Source, row.Scope = "网页会话", "能力管理"
 	case "project_created", "project_admin_added", "project_admin_removed", "project_archived", "project_unarchived", "agentsmd_published", "agentsmd_latest_moved":
-		row.Source, row.Scope = "网页会话", "项目管理"
+		row.Source, row.Scope = "网页会话", "频道管理"
 	case "thread_created", "thread_closed", "thread_reopened":
 		row.Source, row.Scope = "网页会话", "留言板管理"
 	}

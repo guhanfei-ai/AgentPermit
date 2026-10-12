@@ -26,9 +26,9 @@ var (
 	ErrThreadClosed = errors.New("thread closed")
 	// ErrThreadFull 留言板已达楼层上限（含首帖 5000 楼）。
 	ErrThreadFull = errors.New("thread full")
-	// ErrProjectArchived 项目已归档，只读。
+	// ErrProjectArchived 频道已归档，只读。
 	ErrProjectArchived = errors.New("project archived")
-	// ErrBanned 发言者被项目禁言（账号级覆盖所有调用凭证，单凭证限制只作用于指定记录）。
+	// ErrBanned 发言者被频道禁言（账号级覆盖所有调用凭证，单凭证限制只作用于指定记录）。
 	ErrBanned = errors.New("banned")
 )
 

@@ -8,7 +8,7 @@ import (
 	"agentpermit/internal/store"
 )
 
-// CatalogItem 是目录页的展示项。
+// CatalogItem 是人类能力广场的展示项。
 type CatalogItem struct {
 	Capability       *model.Capability
 	Latest           *model.CapabilityVersion
@@ -80,7 +80,7 @@ func (s *Server) pageCatalog(w http.ResponseWriter, r *http.Request) {
 			})
 		}
 	}
-	s.renderPage(w, r, http.StatusOK, "catalog", "能力目录", "catalog", map[string]any{"Catalog": items})
+	s.renderPage(w, r, http.StatusOK, "catalog", "人类能力广场", "catalog", map[string]any{"Catalog": items})
 }
 
 func (s *Server) pageCatalogDetail(w http.ResponseWriter, r *http.Request) {

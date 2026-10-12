@@ -61,6 +61,16 @@ const auditFrom = ` FROM audit_logs a
 	LEFT JOIN agents credential ON credential.id = a.agent_id
 	LEFT JOIN users credential_owner ON credential_owner.id = credential.owner_user_id `
 
+// auditScope 与审计页和统计面板共用，账号范围只由可信的登录身份决定。
+func auditScope(userID string, all bool) (string, []any) {
+	if all {
+		return "1=1", nil
+	}
+	return `(a.actor_user_id = ? OR a.subject_user_id = ?
+		OR (a.event IN ('authorize_allowed','authorize_denied') AND a.capability_id IN
+		(SELECT id FROM capabilities WHERE owner_user_id = ?)))`, []any{userID, userID, userID}
+}
+
 // ListAuditAdmin 返回全局审计（管理员）。
 func (s *Store) ListAuditAdmin(ctx context.Context, limit int) ([]*model.AuditLog, error) {
 	rows, err := s.db.QueryContext(ctx, `SELECT `+auditColumns+auditFrom+` ORDER BY a.id DESC LIMIT ?`, limit)
@@ -83,11 +93,9 @@ func (s *Store) ListAuditAdmin(ctx context.Context, limit int) ([]*model.AuditLo
 // 1) 该账号发起的事件；2) 针对该账号的授权或管理事件；3) 该账号拥有能力上的授权事件。
 // 普通用户不能浏览其他用户操作记录。
 func (s *Store) ListAuditForUser(ctx context.Context, userID string, limit int) ([]*model.AuditLog, error) {
-	rows, err := s.db.QueryContext(ctx, `SELECT `+auditColumns+auditFrom+`
-		WHERE a.actor_user_id = ?
-		   OR a.subject_user_id = ?
-		   OR (a.event IN ('authorize_allowed','authorize_denied') AND a.capability_id IN (SELECT id FROM capabilities WHERE owner_user_id = ?))
-		ORDER BY a.id DESC LIMIT ?`, userID, userID, userID, limit)
+	scope, args := auditScope(userID, false)
+	rows, err := s.db.QueryContext(ctx, `SELECT `+auditColumns+auditFrom+` WHERE `+scope+`
+		ORDER BY a.id DESC LIMIT ?`, append(args, limit)...)
 	if err != nil {
 		return nil, err
 	}

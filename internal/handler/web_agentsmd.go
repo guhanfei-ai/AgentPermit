@@ -10,8 +10,8 @@ import (
 
 const maxDocBodyBytes = 100000 // AGENTS.md 草稿上限（字节）
 
-// pageAgentsmdEdit AGENTS.md 编辑页（项目管理员）：草稿编辑 + 发布 + 版本历史 + latest 移动。
-// 项目根页对外只展示 latest 发布版本；普通留言不能覆盖这份官方引导。
+// pageAgentsmdEdit AGENTS.md 编辑页（频道管理员）：草稿编辑 + 发布 + 版本历史 + latest 移动。
+// 频道根页对外只展示 latest 发布版本；普通留言不能覆盖这份官方引导。
 func (s *Server) pageAgentsmdEdit(w http.ResponseWriter, r *http.Request) {
 	u := userFrom(r.Context())
 	p := s.getProject(w, r)
@@ -19,7 +19,7 @@ func (s *Server) pageAgentsmdEdit(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	if !s.isProjectAdmin(r, p, u) {
-		s.renderError(w, r, http.StatusForbidden, "需要项目管理员权限。")
+		s.renderError(w, r, http.StatusForbidden, "需要频道管理员权限。")
 		return
 	}
 	doc, err := s.store.GetProjectDoc(r.Context(), p.ID)
@@ -49,7 +49,7 @@ func (s *Server) pageAgentsmdDraft(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	if !s.isProjectAdmin(r, p, u) {
-		s.renderError(w, r, http.StatusForbidden, "需要项目管理员权限。")
+		s.renderError(w, r, http.StatusForbidden, "需要频道管理员权限。")
 		return
 	}
 	body := strings.TrimSpace(r.PostFormValue("body"))
@@ -75,7 +75,7 @@ func (s *Server) pageAgentsmdPublish(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	if !s.isProjectAdmin(r, p, u) {
-		s.renderError(w, r, http.StatusForbidden, "需要项目管理员权限。")
+		s.renderError(w, r, http.StatusForbidden, "需要频道管理员权限。")
 		return
 	}
 	version, err := s.store.PublishDoc(r.Context(), p.ID, u.ID)
@@ -97,7 +97,7 @@ func (s *Server) pageAgentsmdSetLatest(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	if !s.isProjectAdmin(r, p, u) {
-		s.renderError(w, r, http.StatusForbidden, "需要项目管理员权限。")
+		s.renderError(w, r, http.StatusForbidden, "需要频道管理员权限。")
 		return
 	}
 	version, err := strconv.Atoi(strings.TrimSpace(r.PostFormValue("version")))

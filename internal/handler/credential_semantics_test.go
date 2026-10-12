@@ -39,7 +39,7 @@ func TestCredentialWebLifecycleAndProtocol(t *testing.T) {
 	oldToken := onceCredentialToken(t, client, location)
 	second, secondToken := e.seedCredential(owner, "机器查询")
 	page := client.getBody("/agents")
-	if !containsAll(page, "我的调用凭证", owner.Username, id, second.ID, "复制 ID", "撤销凭证") {
+	if !containsAll(page, "我的Agent凭证", owner.Username, id, second.ID, "复制 ID", "撤销凭证") {
 		t.Fatal("凭证页必须展示账号归属、记录 ID 与凭证操作")
 	}
 	if strings.Contains(page, oldToken) || strings.Contains(page, "创建 Agent") {
@@ -106,7 +106,7 @@ func TestCredentialAccountPermissionsSurviveReplacement(t *testing.T) {
 
 func TestProjectBanAccountPickerAndExplicitScope(t *testing.T) {
 	e := newTestEnv(t)
-	admin := e.seedUser("project_admin", "项目管理员")
+	admin := e.seedUser("project_admin", "频道管理员")
 	caller := e.seedUser("project_caller", "协作账号")
 	stranger := e.seedUser("stranger", "其他账号")
 	project := seedProjectViaWeb(t, e, admin, "credential-project")
@@ -129,7 +129,7 @@ func TestProjectBanAccountPickerAndExplicitScope(t *testing.T) {
 	otherClient := newHTTPClient(t, e.ts.URL)
 	otherClient.loginViaWeb(caller.Username, testPassword)
 	if resp := otherClient.get(path + "?ban_username=" + stranger.Username); resp.StatusCode != http.StatusForbidden {
-		t.Fatalf("非项目管理员不能查询他人凭证: %d", resp.StatusCode)
+		t.Fatalf("非频道管理员不能查询他人凭证: %d", resp.StatusCode)
 	}
 	if !strings.Contains(client.getBody(path+"?ban_username=missing_user"), "未找到这个账号") {
 		t.Fatal("不存在的账号应有明确提示")

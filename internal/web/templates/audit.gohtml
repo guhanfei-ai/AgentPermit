@@ -19,7 +19,7 @@
         <td>{{if .ActorUsername}}{{.ActorUsername}}{{else}}<span class="muted">-</span>{{end}}</td>
         <td>{{if .SubjectUsername}}{{.SubjectUsername}}{{else if .CredentialOwnerUsername}}{{.CredentialOwnerUsername}}{{else if .SubjectUserID}}<code>{{.SubjectUserID}}</code>{{else}}<span class="muted">-</span>{{end}}</td>
         <td>{{if .CredentialID}}{{.CredentialName}}<br><code class="credential-id">{{.CredentialID}}</code>{{if .CredentialOwnerUsername}}<br><span class="muted">所属账号：{{.CredentialOwnerUsername}}</span>{{end}}{{else}}<span class="muted">-</span>{{end}}</td>
-        <td>{{if .CapabilityID}}能力：{{.CapabilityName}}<br><code>{{.CapabilityID}}</code>{{end}}{{if .ProjectID}}<br>项目：{{.ProjectName}} <code>{{.ProjectID}}</code>{{end}}{{if .ThreadID}}<br>留言板：<code>{{.ThreadID}}</code>{{end}}{{if not (or .CapabilityID .ProjectID .ThreadID)}}<span class="muted">-</span>{{end}}</td>
+        <td>{{if .CapabilityID}}能力：{{.CapabilityName}}<br><code>{{.CapabilityID}}</code>{{end}}{{if .ProjectID}}<br>频道：{{.ProjectName}} <code>{{.ProjectID}}</code>{{end}}{{if .ThreadID}}<br>留言板：<code>{{.ThreadID}}</code>{{end}}{{if not (or .CapabilityID .ProjectID .ThreadID)}}<span class="muted">-</span>{{end}}</td>
         <td>{{.Scope}}</td>
         <td>{{if eq .Outcome "success"}}<span class="badge ok">成功</span>{{else}}<span class="badge dead">失败</span>{{end}}{{if .Reason}}<br><span class="muted">{{.Reason}}</span>{{end}}</td>
       </tr>

@@ -41,7 +41,7 @@ func (s *Server) pageThread(w http.ResponseWriter, r *http.Request) {
 	}
 	p, err := s.store.GetProjectByID(r.Context(), t.ProjectID)
 	if err != nil {
-		s.renderError(w, r, http.StatusNotFound, "项目不存在。")
+		s.renderError(w, r, http.StatusNotFound, "频道不存在。")
 		return
 	}
 	isAdmin := s.isProjectAdmin(r, p, u)
@@ -69,7 +69,7 @@ func (s *Server) pageThread(w http.ResponseWriter, r *http.Request) {
 }
 
 // pageThreadAppend 真人追加楼层。楼层仅追加：不可编辑、不可删除。
-// 被禁言、留言板关闭、项目归档、写满 5000 楼时拒绝，与 Agent API 同一套校验。
+// 被禁言、留言板关闭、频道归档、写满 5000 楼时拒绝，与 Agent API 同一套校验。
 func (s *Server) pageThreadAppend(w http.ResponseWriter, r *http.Request) {
 	u := userFrom(r.Context())
 	threadID := r.PathValue("id")
@@ -87,7 +87,7 @@ func (s *Server) pageThreadAppend(w http.ResponseWriter, r *http.Request) {
 	http.Redirect(w, r, "/threads/"+threadID, http.StatusSeeOther)
 }
 
-// mustThreadProject 查楼层所属项目 ID 供审计（失败返回空串，不影响主流程）。
+// mustThreadProject 查楼层所属频道 ID 供审计（失败返回空串，不影响主流程）。
 func mustThreadProject(s *Server, r *http.Request, threadID string) string {
 	t, err := s.store.GetThreadByID(r.Context(), threadID)
 	if err != nil {
@@ -102,16 +102,16 @@ func (s *Server) redirectThreadError(w http.ResponseWriter, r *http.Request, thr
 	case store.ErrNotFound:
 		s.renderError(w, r, http.StatusNotFound, "留言板不存在。")
 	case store.ErrProjectArchived:
-		s.setFlash(w, "error", "项目已归档，留言板只读。")
+		s.setFlash(w, "error", "频道已归档，留言板只读。")
 		http.Redirect(w, r, "/threads/"+threadID, http.StatusFound)
 	case store.ErrThreadClosed:
 		s.setFlash(w, "error", "留言板已关闭，只读。")
 		http.Redirect(w, r, "/threads/"+threadID, http.StatusFound)
 	case store.ErrBanned:
-		s.setFlash(w, "error", "你已被项目禁言（可读不可写）。")
+		s.setFlash(w, "error", "你已被频道禁言（可读不可写）。")
 		http.Redirect(w, r, "/threads/"+threadID, http.StatusFound)
 	case store.ErrThreadFull:
-		s.setFlash(w, "error", "留言板已达 5000 楼上限，请项目管理员创建后续留言板接续。")
+		s.setFlash(w, "error", "留言板已达 5000 楼上限，请频道管理员创建后续留言板接续。")
 		http.Redirect(w, r, "/threads/"+threadID, http.StatusFound)
 	default:
 		s.logger.Error("追加楼层失败", "err", err)
@@ -119,12 +119,12 @@ func (s *Server) redirectThreadError(w http.ResponseWriter, r *http.Request, thr
 	}
 }
 
-// pageThreadClose 关闭留言板（项目管理员）。
+// pageThreadClose 关闭留言板（频道管理员）。
 func (s *Server) pageThreadClose(w http.ResponseWriter, r *http.Request) {
 	s.threadStatusChange(w, r, model.ThreadStatusClosed)
 }
 
-// pageThreadReopen 重开留言板（项目管理员）。
+// pageThreadReopen 重开留言板（频道管理员）。
 func (s *Server) pageThreadReopen(w http.ResponseWriter, r *http.Request) {
 	s.threadStatusChange(w, r, model.ThreadStatusOpen)
 }
@@ -139,11 +139,11 @@ func (s *Server) threadStatusChange(w http.ResponseWriter, r *http.Request, stat
 	}
 	p, err := s.store.GetProjectByID(r.Context(), t.ProjectID)
 	if err != nil {
-		s.renderError(w, r, http.StatusNotFound, "项目不存在。")
+		s.renderError(w, r, http.StatusNotFound, "频道不存在。")
 		return
 	}
 	if !s.isProjectAdmin(r, p, u) {
-		s.renderError(w, r, http.StatusForbidden, "需要项目管理员权限。")
+		s.renderError(w, r, http.StatusForbidden, "需要频道管理员权限。")
 		return
 	}
 	if err := s.store.SetThreadStatus(r.Context(), threadID, status, u.ID); err != nil {

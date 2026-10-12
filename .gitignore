@@ -33,3 +33,4 @@ tmp/
 .video_agent/
 out/
 _tacp
+.playwright-cli

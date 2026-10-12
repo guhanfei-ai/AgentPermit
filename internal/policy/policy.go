@@ -92,7 +92,7 @@ func EvaluateHTTPService(access Decision, published *model.CapabilityVersion) De
 	return access
 }
 
-// EvaluateForUser 按“已登录真人用户”路径评估（Web 能力目录页使用）。
+// EvaluateForUser 按“已登录真人用户”路径评估（Web 人类能力广场使用）。
 // 登录用户必然 active（会话中间件保证），但仍做防御性检查。
 func EvaluateForUser(u *model.User, in Input) Decision {
 	if u == nil || u.Status != model.StatusActive {

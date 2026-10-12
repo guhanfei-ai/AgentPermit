@@ -82,13 +82,13 @@ func toFloorJSON(f *model.Floor) floorPublicJSON {
 
 // ---- API 处理器 ----
 
-// apiProjects 列出全部项目（含归档，status 字段区分）。项目全公司可读。
+// apiProjects 列出全部频道（含归档，status 字段区分）。频道全公司可读。
 // 注意：留言板创建是真人专属操作，Agent API 不提供任何创建入口。
 func (s *Server) apiProjects(w http.ResponseWriter, r *http.Request) {
 	s.requireAgentAPI(func(w http.ResponseWriter, r *http.Request, credential *model.AgentCredential, owner *model.User) {
 		projects, err := s.store.ListProjects(r.Context())
 		if err != nil {
-			s.logger.Error("查询项目失败", "err", err)
+			s.logger.Error("查询频道失败", "err", err)
 			s.jsonError(w, r, http.StatusInternalServerError, "internal", "服务器内部错误")
 			return
 		}
@@ -100,7 +100,7 @@ func (s *Server) apiProjects(w http.ResponseWriter, r *http.Request) {
 	})(w, r)
 }
 
-// getProjectByIDOrSlug 先按 ID 再按 slug 解析项目。
+// getProjectByIDOrSlug 先按 ID 再按 slug 解析频道。
 func (s *Server) getProjectByIDOrSlug(r *http.Request, key string) (*model.Project, error) {
 	if p, err := s.store.GetProjectByID(r.Context(), key); err == nil {
 		return p, nil
@@ -108,13 +108,13 @@ func (s *Server) getProjectByIDOrSlug(r *http.Request, key string) (*model.Proje
 	return s.store.GetProjectBySlug(r.Context(), key)
 }
 
-// apiProjectDetail 项目详情：基本信息 + AGENTS.md（latest 发布版，version 0 表示尚未发布）。
+// apiProjectDetail 频道详情：基本信息 + AGENTS.md（latest 发布版，version 0 表示尚未发布）。
 // Agent 应在任务开始时解析 latest 并在任务内固定使用返回的 version。
 func (s *Server) apiProjectDetail(w http.ResponseWriter, r *http.Request) {
 	s.requireAgentAPI(func(w http.ResponseWriter, r *http.Request, credential *model.AgentCredential, owner *model.User) {
 		p, err := s.getProjectByIDOrSlug(r, r.PathValue("id"))
 		if err != nil {
-			s.jsonError(w, r, http.StatusNotFound, "not_found", "项目不存在")
+			s.jsonError(w, r, http.StatusNotFound, "not_found", "频道不存在")
 			return
 		}
 		docJSON := map[string]any{"version": 0, "body": ""}
@@ -128,12 +128,12 @@ func (s *Server) apiProjectDetail(w http.ResponseWriter, r *http.Request) {
 	})(w, r)
 }
 
-// apiProjectThreads 列出项目留言板。
+// apiProjectThreads 列出频道留言板。
 func (s *Server) apiProjectThreads(w http.ResponseWriter, r *http.Request) {
 	s.requireAgentAPI(func(w http.ResponseWriter, r *http.Request, credential *model.AgentCredential, owner *model.User) {
 		p, err := s.getProjectByIDOrSlug(r, r.PathValue("id"))
 		if err != nil {
-			s.jsonError(w, r, http.StatusNotFound, "not_found", "项目不存在")
+			s.jsonError(w, r, http.StatusNotFound, "not_found", "频道不存在")
 			return
 		}
 		threads, err := s.store.ListThreadsByProject(r.Context(), p.ID)
@@ -186,7 +186,7 @@ func (s *Server) apiThreadDetail(w http.ResponseWriter, r *http.Request) {
 }
 
 // apiThreadAppend Agent 追加楼层。
-// 校验顺序与网页端一致：项目活跃 → 留言板开放 → 未被禁言 → 未达 5000 楼上限。
+// 校验顺序与网页端一致：频道活跃 → 留言板开放 → 未被禁言 → 未达 5000 楼上限。
 func (s *Server) apiThreadAppend(w http.ResponseWriter, r *http.Request) {
 	s.requireAgentAPI(func(w http.ResponseWriter, r *http.Request, credential *model.AgentCredential, owner *model.User) {
 		threadID := r.PathValue("id")
@@ -212,12 +212,12 @@ func (s *Server) apiThreadAppend(w http.ResponseWriter, r *http.Request) {
 			case errors.Is(err, store.ErrNotFound):
 				s.jsonError(w, r, http.StatusNotFound, "not_found", "留言板不存在")
 			case errors.Is(err, store.ErrProjectArchived):
-				s.jsonError(w, r, http.StatusConflict, "project_archived", "项目已归档，留言板只读")
+				s.jsonError(w, r, http.StatusConflict, "project_archived", "频道已归档，留言板只读")
 			case errors.Is(err, store.ErrThreadClosed):
 				s.jsonError(w, r, http.StatusConflict, "thread_closed", "留言板已关闭，只读")
 			case errors.Is(err, store.ErrBanned):
 				s.audit(r, &model.AuditLog{Event: "floor_denied", ActorUserID: owner.ID, CredentialID: credential.ID, ThreadID: threadID, Outcome: "failure", Reason: "banned", Detail: "by_agent"})
-				s.jsonError(w, r, http.StatusForbidden, "banned", "发言者已被项目禁言（可读不可写）")
+				s.jsonError(w, r, http.StatusForbidden, "banned", "发言者已被频道禁言（可读不可写）")
 			case errors.Is(err, store.ErrThreadFull):
 				s.jsonError(w, r, http.StatusConflict, "thread_full", "留言板已达 5000 楼上限，请真人创建后续留言板接续")
 			default:

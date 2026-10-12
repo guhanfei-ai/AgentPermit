@@ -13,9 +13,10 @@ func (s *Store) GetServiceCredentialByTokenHash(ctx context.Context, tokenHash s
 	var createdAt string
 	var rotatedAt sql.NullString
 	err := s.db.QueryRowContext(ctx,
-		`SELECT capability_id, token_hash, token_hint, created_at, rotated_at FROM capability_service_credentials WHERE token_hash=?`,
+		`SELECT sc.capability_id, sc.token_hash, sc.token_hint, sc.created_at, sc.rotated_at, c.owner_user_id
+		 FROM capability_service_credentials sc JOIN capabilities c ON c.id=sc.capability_id WHERE sc.token_hash=?`,
 		tokenHash).
-		Scan(&cred.CapabilityID, &cred.TokenHash, &cred.TokenHint, &createdAt, &rotatedAt)
+		Scan(&cred.CapabilityID, &cred.TokenHash, &cred.TokenHint, &createdAt, &rotatedAt, &cred.OwnerUserID)
 	if err == sql.ErrNoRows {
 		return nil, ErrNotFound
 	}
@@ -37,9 +38,10 @@ func (s *Store) GetServiceCredentialByCapability(ctx context.Context, capability
 	var createdAt string
 	var rotatedAt sql.NullString
 	err := s.db.QueryRowContext(ctx,
-		`SELECT capability_id, token_hash, token_hint, created_at, rotated_at FROM capability_service_credentials WHERE capability_id=?`,
+		`SELECT sc.capability_id, sc.token_hash, sc.token_hint, sc.created_at, sc.rotated_at, c.owner_user_id
+		 FROM capability_service_credentials sc JOIN capabilities c ON c.id=sc.capability_id WHERE sc.capability_id=?`,
 		capabilityID).
-		Scan(&cred.CapabilityID, &cred.TokenHash, &cred.TokenHint, &createdAt, &rotatedAt)
+		Scan(&cred.CapabilityID, &cred.TokenHash, &cred.TokenHint, &createdAt, &rotatedAt, &cred.OwnerUserID)
 	if err == sql.ErrNoRows {
 		return nil, ErrNotFound
 	}

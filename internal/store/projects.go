@@ -35,7 +35,7 @@ func scanProject(row interface{ Scan(...any) error }) (*model.Project, error) {
 	return &p, nil
 }
 
-// CreateProject 创建项目：创建者自动写入 project_admins，并初始化 AGENTS.md 文档行。
+// CreateProject 创建频道：创建者自动写入 project_admins，并初始化 AGENTS.md 文档行。
 func (s *Store) CreateProject(ctx context.Context, p *model.Project) error {
 	p.CreatedAt = now()
 	p.UpdatedAt = p.CreatedAt
@@ -58,17 +58,17 @@ func (s *Store) CreateProject(ctx context.Context, p *model.Project) error {
 	})
 }
 
-// GetProjectByID 按 ID 查询项目。
+// GetProjectByID 按 ID 查询频道。
 func (s *Store) GetProjectByID(ctx context.Context, id string) (*model.Project, error) {
 	return scanProject(s.db.QueryRowContext(ctx, `SELECT `+projectColumns+projectFrom+` WHERE p.id=?`, id))
 }
 
-// GetProjectBySlug 按 slug 查询项目。
+// GetProjectBySlug 按 slug 查询频道。
 func (s *Store) GetProjectBySlug(ctx context.Context, slug string) (*model.Project, error) {
 	return scanProject(s.db.QueryRowContext(ctx, `SELECT `+projectColumns+projectFrom+` WHERE p.slug=?`, slug))
 }
 
-// ListProjects 列出全部项目（广场页），活跃在前、更新时间倒序。
+// ListProjects 列出全部频道（AI聊天广场页），活跃在前、更新时间倒序。
 func (s *Store) ListProjects(ctx context.Context) ([]*model.Project, error) {
 	rows, err := s.db.QueryContext(ctx, `SELECT `+projectColumns+projectFrom+` ORDER BY p.status='archived', p.updated_at DESC`)
 	if err != nil {
@@ -86,7 +86,7 @@ func (s *Store) ListProjects(ctx context.Context) ([]*model.Project, error) {
 	return out, rows.Err()
 }
 
-// SetProjectStatus 归档/恢复项目。
+// SetProjectStatus 归档/恢复频道。
 func (s *Store) SetProjectStatus(ctx context.Context, id, status string) error {
 	res, err := s.db.ExecContext(ctx, `UPDATE projects SET status=?, updated_at=? WHERE id=?`,
 		status, fmtTime(now()), id)
@@ -100,7 +100,7 @@ func (s *Store) SetProjectStatus(ctx context.Context, id, status string) error {
 	return nil
 }
 
-// IsProjectAdmin 报告用户是否项目管理员（创建时已把创建者写入 admins 表）。
+// IsProjectAdmin 报告用户是否频道管理员（创建时已把创建者写入 admins 表）。
 func (s *Store) IsProjectAdmin(ctx context.Context, projectID, userID string) (bool, error) {
 	var one int
 	err := s.db.QueryRowContext(ctx, `SELECT 1 FROM project_admins WHERE project_id=? AND user_id=?`, projectID, userID).Scan(&one)
@@ -113,7 +113,7 @@ func (s *Store) IsProjectAdmin(ctx context.Context, projectID, userID string) (b
 	return true, nil
 }
 
-// ListProjectAdmins 列出项目管理员（联查展示名）。
+// ListProjectAdmins 列出频道管理员（联查展示名）。
 func (s *Store) ListProjectAdmins(ctx context.Context, projectID string) ([]*model.User, error) {
 	rows, err := s.db.QueryContext(ctx, `SELECT u.id, u.username, u.display_name, u.role, u.status, u.created_at, u.updated_at
 		FROM project_admins pa JOIN users u ON u.id = pa.user_id
@@ -140,7 +140,7 @@ func (s *Store) ListProjectAdmins(ctx context.Context, projectID string) ([]*mod
 	return out, rows.Err()
 }
 
-// AddProjectAdmin 新增项目管理员（按用户 ID）。
+// AddProjectAdmin 新增频道管理员（按用户 ID）。
 func (s *Store) AddProjectAdmin(ctx context.Context, projectID, userID string) error {
 	_, err := s.db.ExecContext(ctx, `INSERT INTO project_admins (project_id, user_id, created_at) VALUES (?,?,?)`,
 		projectID, userID, fmtTime(now()))
@@ -150,7 +150,7 @@ func (s *Store) AddProjectAdmin(ctx context.Context, projectID, userID string) e
 	return err
 }
 
-// RemoveProjectAdmin 移除项目管理员。
+// RemoveProjectAdmin 移除频道管理员。
 func (s *Store) RemoveProjectAdmin(ctx context.Context, projectID, userID string) error {
 	_, err := s.db.ExecContext(ctx, `DELETE FROM project_admins WHERE project_id=? AND user_id=?`, projectID, userID)
 	return err
@@ -204,7 +204,7 @@ func scanBan(row interface{ Scan(...any) error }) (*model.ProjectBan, error) {
 	return &b, nil
 }
 
-// ListProjectBans 列出项目禁言条目（联查账号与凭证名称）。
+// ListProjectBans 列出频道禁言条目（联查账号与凭证名称）。
 func (s *Store) ListProjectBans(ctx context.Context, projectID string) ([]*model.ProjectBan, error) {
 	rows, err := s.db.QueryContext(ctx, `SELECT `+banColumns+` FROM project_bans b
 		LEFT JOIN users u ON u.id = b.user_id

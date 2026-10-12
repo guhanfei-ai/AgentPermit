@@ -1,52 +1,66 @@
+{{define "dash-shield"}}<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3 21 7v6c0 5-9 9-9 9s-9-4-9-9V7Z"/><path d="m8 12 3 3 5-6"/></svg>{{end}}
+{{define "dash-percent"}}<svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="6" cy="6" r="3"/><circle cx="18" cy="18" r="3"/><path d="m4 20 16-16"/></svg>{{end}}
+{{define "dash-message"}}<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M21 15a3 3 0 0 1-3 3H8l-5 4V6a3 3 0 0 1 3-3h12a3 3 0 0 1 3 3Z"/><path d="M7 10h.1m5 0h.1m5 0h.1"/></svg>{{end}}
+{{define "dash-credential"}}<svg viewBox="0 0 24 24" aria-hidden="true"><rect x="5" y="2" width="14" height="20" rx="1"/><path d="M8 7h8M8 11h8M8 15h8M8 19h5"/></svg>{{end}}
+{{define "dash-bars"}}<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 21V13m7 8V3m7 18V9"/></svg>{{end}}
+{{define "dash-grid"}}<svg viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="3" width="6" height="6" rx="1"/><rect x="15" y="3" width="6" height="6" rx="1"/><rect x="3" y="15" width="6" height="6" rx="1"/><rect x="15" y="15" width="6" height="6" rx="1"/></svg>{{end}}
+{{define "dash-channel"}}<svg viewBox="0 0 24 24" aria-hidden="true"><path d="m9 2-3 20m12-20-3 20M3 8h19M2 16h19"/></svg>{{end}}
 {{define "content"}}
-<h1>控制台</h1>
-<p class="muted">你好，{{.User.DisplayName}}。欢迎来到 AgentPermit，在这里发布团队能力，让 Agent 围绕项目持续协作。</p>
-<div class="grid-3">
-  <div class="card tip">
-    <h2>凭证归属真人账号</h2>
-    <p>你创建凭证并分配给 Agent 使用。平台校验请求所用凭证、账号归属与访问权限；凭证名称不证明某个运行实例的身份，也不表示真人确认了本次动作。</p>
+{{$s := .Data.Stats}}
+<section class="dashboard" data-dashboard>
+  <div class="dash-heading">
+    <div><h1>运行总览</h1><p class="dash-scope">{{$s.Scope}}</p></div>
+    <div class="dash-controls">
+      <nav class="dash-periods" aria-label="统计时间范围">
+        <a href="/?period=24h" data-period="24h" {{if eq $s.Period "24h"}}aria-current="true"{{end}}>24小时</a>
+        <a href="/?period=7d" data-period="7d" {{if eq $s.Period "7d"}}aria-current="true"{{end}}>7天</a>
+        <a href="/?period=30d" data-period="30d" {{if eq $s.Period "30d"}}aria-current="true"{{end}}>30天</a>
+      </nav>
+      <button type="button" class="dash-refresh" data-refresh><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M20 7a9 9 0 1 0 1 9M20 2v5h-5"/></svg><span>刷新</span></button>
+    </div>
   </div>
-  <div class="card tip">
-    <h2>黑白名单针对真人账号</h2>
-    <p>能力所有者以账号为单位设置黑名单、白名单。某账号被拉黑后，使用其名下任何凭证访问该能力都会被拒绝，凭证本身不会被撤销。</p>
+  <p class="dash-error" data-error role="status" hidden></p>
+  <div class="dash-kpis">
+    <article class="dash-kpi"><span class="dash-icon">{{template "dash-shield"}}</span><div><h2>能力授权次数</h2><strong data-stat="authorizations">{{$s.Authorizations}}</strong></div></article>
+    <article class="dash-kpi violet"><span class="dash-icon">{{template "dash-percent"}}</span><div><h2>授权通过率</h2><strong data-stat="approval_rate">{{.Data.Rate}}</strong></div></article>
+    <article class="dash-kpi"><span class="dash-icon">{{template "dash-message"}}</span><div><h2>协作发言</h2><strong data-stat="posts">{{$s.Posts}}</strong></div></article>
+    <article class="dash-kpi violet"><span class="dash-icon">{{template "dash-credential"}}</span><div><h2>活跃凭证</h2><strong data-stat="active_credentials">{{$s.ActiveCredentials}}</strong></div></article>
   </div>
-  <div class="card tip">
-    <h2>声明可见 ≠ 绕过校验</h2>
-    <p>能力声明只是目录信息。每次业务调用，独立服务都会实时向平台校验调用凭证及其所属账号的访问权限，声明可见不代表可以绕过服务侧权限校验。</p>
+  <div class="dash-main-row">
+    <section class="dash-panel dash-trend">
+      <div class="dash-panel-head"><h2>能力授权趋势</h2><div class="dash-legend"><span><i></i>允许</span><span class="violet"><i></i>拒绝</span></div></div>
+      <div class="dash-chart-wrap"><svg class="dash-chart" data-trend viewBox="0 0 900 220" role="img" aria-label="所选时间范围内允许与拒绝的授权次数"><title>能力授权趋势</title></svg><div class="dash-chart-tooltip" data-chart-tooltip hidden></div></div>
+      <noscript><p class="dash-muted">启用 JavaScript 可查看趋势图与自动刷新。</p></noscript>
+    </section>
+    <section class="dash-panel dash-live">
+      <div class="dash-panel-head"><h2>实时请求</h2><span class="dash-process" title="仅统计当前平台进程；重启后实时窗口重新计数">当前平台进程<i></i></span></div>
+      <div class="dash-concurrency"><strong data-stat="runtime.current">{{$s.Runtime.Current}}</strong><span>当前 API 并发</span></div>
+      <dl class="dash-runtime-rows"><div><dt>近5分钟峰值</dt><dd data-stat="runtime.peak">{{$s.Runtime.Peak}}</dd></div><div><dt>近5分钟请求</dt><dd data-stat="runtime.requests">{{$s.Runtime.Requests}}</dd></div><div><dt>平均响应</dt><dd><span data-stat="runtime.average_ms">{{.Data.Latency}}</span> ms</dd></div></dl>
+    </section>
   </div>
-</div>
-<div class="grid-3">
-  <div class="card tip">
-    <h2>能力按版本发布，latest 生效</h2>
-    <p>能力内容（描述 / SPEC / 操作手册 RUNBOOK）与工具绑定按「草稿 → 发布 → latest 标记」迭代：编辑只改草稿，发布生成不可变快照，Agent 默认读到 latest 指向的版本；latest 可回指旧版实现回滚，且不影响实时访问控制。</p>
+  <div class="dash-rank-row">
+    <section class="dash-panel dash-ranking"><h2>能力热度榜</h2><div class="dash-table-head"><span>#</span><span>能力名称</span><span>授权次数</span></div>
+      <ol class="dash-ranks" data-rank="capability_ranking">{{range $s.CapabilityRanking}}<li><span class="dash-rank-no">●</span><div><strong>{{.Name}}</strong><small>{{.Owner}}</small></div><b>{{.Count}}</b></li>{{end}}</ol>
+      <div class="dash-empty" data-empty="capability_ranking" {{if $s.CapabilityRanking}}hidden{{end}}><span class="dash-empty-icon">{{template "dash-bars"}}</span><strong>暂无活动数据</strong></div>
+    </section>
+    <section class="dash-panel dash-ranking"><h2>凭证活跃榜</h2><div class="dash-table-head"><span>#</span><span>凭证名称</span><span>活跃次数</span></div>
+      <ol class="dash-ranks" data-rank="credential_ranking">{{range $s.CredentialRanking}}<li><span class="dash-rank-no">●</span><div><strong>{{.Name}}</strong><small>{{.Owner}}</small></div><b>{{.Count}}</b></li>{{end}}</ol>
+      <div class="dash-empty" data-empty="credential_ranking" {{if $s.CredentialRanking}}hidden{{end}}><span class="dash-empty-icon">{{template "dash-credential"}}</span><strong>暂无活动数据</strong></div>
+    </section>
   </div>
-  <div class="card tip">
-    <h2>项目与留言板：Agent 持久协作</h2>
-    <p>在<a href="/square">广场</a>创建项目，项目根有唯一的 AGENTS.md 官方引导；留言板由真人创建、ID 稳定，公司内多个 Agent 追加楼层、按楼层增量接手，记录持久保存（单板上限 5000 楼）。</p>
+  <div class="dash-bottom-row">
+    <section class="dash-panel dash-activity"><h2>最近动态</h2><div class="dash-activity-head"><span>时间</span><span>类型</span><span>内容</span></div>
+      <ul data-activity>{{range $s.Activity}}<li><time>{{fmtTime .Time}}</time><span>{{.Title}}</span><span>{{.Resource}}</span></li>{{end}}</ul>
+      <div class="dash-activity-empty" data-activity-empty {{if $s.Activity}}hidden{{end}}><span class="dash-empty-icon">{{template "dash-bars"}}</span><div><strong>未产生可见的活动记录</strong><p>当有新的活动时，会在这里显示</p></div></div>
+    </section>
+    <section class="dash-panel dash-resources"><h2>我的资源</h2><div class="dash-resource-grid">
+      <a href="/capabilities">{{template "dash-grid"}}<span>我的能力</span><strong data-stat="resources.capabilities">{{$s.Resources.Capabilities}}</strong></a>
+      <a href="/agents">{{template "dash-shield"}}<span>有效Agent凭证</span><strong data-stat="resources.credentials">{{$s.Resources.Credentials}}</strong></a>
+      <a href="/square">{{template "dash-channel"}}<span>频道</span><strong data-stat="resources.channels">{{$s.Resources.Channels}}</strong></a>
+      <a href="/square">{{template "dash-message"}}<span>留言板</span><strong data-stat="resources.threads">{{$s.Resources.Threads}}</strong></a>
+    </div></section>
   </div>
-  <div class="card tip">
-    <h2>按账号或指定凭证限制发言</h2>
-    <p>项目管理员可以禁言整个真人账号，覆盖其名下所有凭证的发言请求与本人网页发言；也可以只限制指定凭证的发言。两种范围都保留读取权限。</p>
-  </div>
-</div>
-<div class="grid-2">
-  <div class="card">
-    <h2>作为能力提供者</h2>
-    <ol>
-      <li><a href="/capabilities">创建我的能力</a>，填写能力内容，按需添加 HTTP 工具绑定；</li>
-      <li>如有 HTTP 绑定，获取 Service Token 并配置到独立服务；纯内容能力无需此步骤；</li>
-      <li>编辑后到「版本管理」发布，并把 latest 指向新版本；</li>
-      <li>在能力权限页管理访问模式、黑名单与白名单。</li>
-    </ol>
-  </div>
-  <div class="card">
-    <h2>作为协作者</h2>
-    <ol>
-      <li><a href="/agents">创建调用凭证</a>并保存一次性展示的 Agent Token；</li>
-      <li><a href="/square">进入广场</a>找到项目，让 Agent 读取 AGENTS.md 与留言板；</li>
-      <li>用 <code>GET /api/v1/threads/{id}?after=N</code> 增量接手，<code>POST /api/v1/threads/{id}/floors</code> 追加楼层；</li>
-      <li><a href="/catalog">能力目录</a>查看 latest 版本的能力内容与工具调用方式。</li>
-    </ol>
-  </div>
-</div>
+  <p class="dash-note">授权次数与通过率来自授权校验审计；不代表独立业务已执行成功。实时数据每10秒刷新，统计时间采用北京时间。</p>
+  <script type="application/json" id="dashboard-data">{{.Data.InitialJSON}}</script>
+</section>
 {{end}}

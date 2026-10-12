@@ -23,6 +23,11 @@ func (s *Server) baseMiddleware(next http.Handler) http.Handler {
 		start := time.Now()
 		reqID := newRequestID()
 		ctx := withRequestID(r.Context(), reqID)
+		if isAPIPath(r.URL.Path) {
+			observation := s.metrics.begin()
+			defer s.metrics.finish(observation)
+			ctx = context.WithValue(ctx, ctxAPIObservation, observation)
+		}
 		r = r.WithContext(ctx)
 		w.Header().Set("X-Request-ID", reqID)
 

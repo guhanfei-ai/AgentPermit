@@ -63,6 +63,7 @@ func (s *Server) apiServiceAuthorize(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	s.bindRuntime(r, cred.OwnerUserID)
 	body, err := io.ReadAll(io.LimitReader(r.Body, authorizeBodyLimit))
 	if err != nil {
 		s.jsonError(w, r, http.StatusBadRequest, "invalid_request", "请求体读取失败")
@@ -90,6 +91,7 @@ func (s *Server) apiServiceAuthorize(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	capability, err := s.store.GetCapabilityByID(r.Context(), cred.CapabilityID)
+	s.bindRuntime(r, owner.ID)
 	if err != nil {
 		// 数据不一致属于平台内部故障：500，调用方 fail closed
 		s.logger.Error("授权时查询能力失败", "err", err, "capability_id", cred.CapabilityID)

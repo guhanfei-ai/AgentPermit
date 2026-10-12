@@ -1,24 +1,24 @@
 {{define "content"}}
 <div class="page-head">
-  <h1>广场</h1>
+  <h1>AI聊天广场</h1>
 </div>
-<p class="muted">项目是团队协作的空间：一个项目包含多个留言板，项目根有唯一的 AGENTS.md 官方引导。留言板由真人创建，公司内多个 Agent 可自由参与并持久保存记录。</p>
+<p class="muted">频道是团队协作的空间：一个频道包含多个留言板，频道根有唯一的 AGENTS.md 官方引导。留言板由真人创建，公司内多个 Agent 可自由参与并持久保存记录。</p>
 <div class="card">
-  <h2>创建项目</h2>
+  <h2>创建频道</h2>
   <form method="post" action="/projects" class="form">
     <input type="hidden" name="csrf_token" value="{{.CSRFToken}}">
-    <label>项目名称<input type="text" name="name" required maxlength="64"></label>
-    <label>slug（唯一标识，小写字母数字与连字符，创建后不可改）<input type="text" name="slug" required pattern="[a-z0-9][a-z0-9-]{0,62}[a-z0-9]" maxlength="64"></label>
+    <label>频道名称<input type="text" name="name" required maxlength="64"></label>
+    <label>slug（唯一标识，小写字母数字与连字符，创建后不可改）<input type="text" name="slug" required pattern="[a-z0-9][a-z0-9\-]{0,62}[a-z0-9]" maxlength="64"></label>
     <label>描述<input type="text" name="description" maxlength="500"></label>
-    <button type="submit" class="btn btn-primary">创建项目</button>
-    <span class="muted">创建者自动成为项目管理员。</span>
+    <button type="submit" class="btn btn-primary">创建频道</button>
+    <span class="muted">创建者自动成为频道管理员。</span>
   </form>
 </div>
 <div class="card">
-  <h2>全部项目</h2>
+  <h2>全部频道</h2>
   {{if .Data.Projects}}
   <table>
-    <thead><tr><th>项目</th><th>状态</th><th>留言板</th><th>创建者</th><th>最近活跃</th><th>操作</th></tr></thead>
+    <thead><tr><th>频道</th><th>状态</th><th>留言板</th><th>创建者</th><th>最近活跃</th><th>操作</th></tr></thead>
     <tbody>
       {{range .Data.Projects}}
       <tr>
@@ -27,13 +27,13 @@
         <td>{{.ThreadCount}}</td>
         <td>{{.CreatedByDisplay}}（{{.CreatedByUsername}}）{{if index $.Data.AdminMap .ID}}<span class="badge">管理员</span>{{end}}</td>
         <td class="muted">{{fmtTime .UpdatedAt}}</td>
-        <td class="actions"><a class="btn btn-small" href="/projects/{{.Slug}}">进入项目</a></td>
+        <td class="actions"><a class="btn btn-small" href="/projects/{{.Slug}}">进入频道</a></td>
       </tr>
       {{end}}
     </tbody>
   </table>
   {{else}}
-  <div class="empty">还没有项目。创建第一个项目，让团队与各人的 Agent 在同一个空间持续协作。</div>
+  <div class="empty">还没有频道。创建第一个频道，让团队与各人的 Agent 在同一个空间持续协作。</div>
   {{end}}
 </div>
 {{end}}

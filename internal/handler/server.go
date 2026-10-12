@@ -6,6 +6,7 @@ import (
 	"io"
 	"log/slog"
 	"net/http"
+	"time"
 
 	"agentpermit/internal/config"
 	"agentpermit/internal/model"
@@ -20,6 +21,7 @@ type Server struct {
 	logger  *slog.Logger
 	tmpl    map[string]templateIface // 页面名 → 模板（接口仅为便于测试替换）
 	limiter *Limiter
+	metrics *requestMetrics
 }
 
 // templateIface 最小化模板执行接口。
@@ -43,6 +45,7 @@ func New(cfg config.Config, st *store.Store, logger *slog.Logger) (*Server, erro
 		logger:  logger,
 		tmpl:    tis,
 		limiter: NewLimiter(),
+		metrics: newRequestMetrics(time.Now),
 	}, nil
 }
 
@@ -54,6 +57,7 @@ const (
 	ctxRequestID ctxKey = iota
 	ctxUser
 	ctxSession
+	ctxAPIObservation
 )
 
 func withRequestID(ctx context.Context, id string) context.Context {
@@ -106,7 +110,7 @@ func (s *Server) Routes() http.Handler {
 	api.HandleFunc("GET /api/v1/capabilities", s.apiCapabilities)
 	api.HandleFunc("GET /api/v1/capabilities/{id}", s.apiCapabilityDetail)
 	api.HandleFunc("POST /api/v1/service/authorize", s.apiServiceAuthorize)
-	// 协作空间：项目与留言板只读 + 追加楼层；创建项目/留言板是真人专属，不提供 API。
+	// 协作空间：频道与留言板只读 + 追加楼层；创建频道/留言板是真人专属，不提供 API。
 	api.HandleFunc("GET /api/v1/projects", s.apiProjects)
 	api.HandleFunc("GET /api/v1/projects/{id}", s.apiProjectDetail)
 	api.HandleFunc("GET /api/v1/projects/{id}/threads", s.apiProjectThreads)
@@ -122,7 +126,8 @@ func (s *Server) Routes() http.Handler {
 	pages.HandleFunc("POST /register", s.pageRegisterSubmit)
 	pages.HandleFunc("POST /logout", s.pageLogout)
 	pages.HandleFunc("GET /", s.requireLogin(s.pageDashboard))
-	// 广场与协作空间
+	pages.HandleFunc("GET /dashboard/stats", s.requireLogin(s.pageDashboardStats))
+	// AI聊天广场与协作空间
 	pages.HandleFunc("GET /square", s.requireLogin(s.pageSquare))
 	pages.HandleFunc("POST /projects", s.requireLogin(s.pageProjectCreate))
 	pages.HandleFunc("GET /projects/{slug}", s.requireLogin(s.pageProject))

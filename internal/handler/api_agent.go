@@ -46,6 +46,7 @@ func (s *Server) requireAgentAPI(next func(w http.ResponseWriter, r *http.Reques
 			s.jsonError(w, r, http.StatusUnauthorized, "unauthorized", "调用凭证无效")
 			return
 		}
+		s.bindRuntime(r, owner.ID)
 		next(w, r, credential, owner)
 	}
 }

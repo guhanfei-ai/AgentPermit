@@ -3,7 +3,7 @@
 {{$v := .Data.Latest}}
 <div class="page-head">
   <h1>{{$v.Name}}</h1>
-  <a class="btn" href="/catalog">返回目录</a>
+  <a class="btn" href="/catalog">返回人类能力广场</a>
 </div>
 <div class="card">
   <h2>基本信息 <span class="badge">latest v{{$v.Version}}</span></h2>
@@ -19,7 +19,7 @@
     {{end}}
     <tr><th>访问模式</th><td>{{if eq $c.AccessMode "team"}}team（默认团队）{{else}}allowlist（白名单）{{end}}</td></tr>
   </table>
-  {{if .Data.IsOwner}}<p class="muted">目录与 Agent API 均展示 latest 发布版本；编辑草稿请到 <a href="/capabilities/{{$c.ID}}/edit">编辑</a> / <a href="/capabilities/{{$c.ID}}/versions">版本管理</a>。</p>{{end}}
+  {{if .Data.IsOwner}}<p class="muted">人类能力广场与 Agent API 均展示 latest 发布版本；编辑草稿请到 <a href="/capabilities/{{$c.ID}}/edit">编辑</a> / <a href="/capabilities/{{$c.ID}}/versions">版本管理</a>。</p>{{end}}
 </div>
 <div class="card">
   <h2>能力内容（SPEC / 操作手册 RUNBOOK）</h2>

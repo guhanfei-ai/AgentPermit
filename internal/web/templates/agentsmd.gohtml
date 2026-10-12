@@ -3,9 +3,9 @@
 {{$d := .Data.Doc}}
 <div class="page-head">
   <h1>AGENTS.md · {{$p.Name}}</h1>
-  <div class="actions"><a class="btn" href="/projects/{{$p.Slug}}">返回项目</a></div>
+  <div class="actions"><a class="btn" href="/projects/{{$p.Slug}}">返回频道</a></div>
 </div>
-<p class="muted">项目根的官方引导位置，普通留言不能覆盖它。对外（项目页与 Agent API）始终展示 <strong>latest 标记</strong>指向的已发布版本；草稿只在保存并发布后生效。latest 可回指旧版本实现回滚。</p>
+<p class="muted">频道根的官方引导位置，普通留言不能覆盖它。对外（频道页与 Agent API）始终展示 <strong>latest 标记</strong>指向的已发布版本；草稿只在保存并发布后生效。latest 可回指旧版本实现回滚。</p>
 <div class="card">
   <h2>草稿编辑</h2>
   <form method="post" action="/projects/{{$p.Slug}}/agents-md/draft" class="form">

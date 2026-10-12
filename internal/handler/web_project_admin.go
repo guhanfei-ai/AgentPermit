@@ -23,7 +23,7 @@ type projectBanTarget struct {
 	Credentials []projectBanCredentialOption
 }
 
-// pageProjectAdmin 项目管理页：管理员、禁言、归档。仅项目管理员可访问。
+// pageProjectAdmin 频道管理页：管理员、禁言、归档。仅频道管理员可访问。
 func (s *Server) pageProjectAdmin(w http.ResponseWriter, r *http.Request) {
 	u := userFrom(r.Context())
 	p := s.getProject(w, r)
@@ -31,12 +31,12 @@ func (s *Server) pageProjectAdmin(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	if !s.isProjectAdmin(r, p, u) {
-		s.renderError(w, r, http.StatusForbidden, "需要项目管理员权限。")
+		s.renderError(w, r, http.StatusForbidden, "需要频道管理员权限。")
 		return
 	}
 	admins, err := s.store.ListProjectAdmins(r.Context(), p.ID)
 	if err != nil {
-		s.logger.Error("查询项目管理员失败", "err", err)
+		s.logger.Error("查询频道管理员失败", "err", err)
 		s.renderError(w, r, http.StatusInternalServerError, "服务暂时不可用，请稍后再试。")
 		return
 	}
@@ -74,7 +74,7 @@ func (s *Server) pageProjectAdmin(w http.ResponseWriter, r *http.Request) {
 			}
 		}
 	}
-	s.renderPage(w, r, http.StatusOK, "project_admin", "项目管理 · "+p.Name, "project", map[string]any{
+	s.renderPage(w, r, http.StatusOK, "project_admin", "频道管理 · "+p.Name, "project", map[string]any{
 		"Project":           p,
 		"Admins":            admins,
 		"Bans":              bans,
@@ -85,12 +85,12 @@ func (s *Server) pageProjectAdmin(w http.ResponseWriter, r *http.Request) {
 	})
 }
 
-// pageProjectAdminAdd 新增项目管理员（按用户名，需已是平台注册用户）。
+// pageProjectAdminAdd 新增频道管理员（按用户名，需已是平台注册用户）。
 func (s *Server) pageProjectAdminAdd(w http.ResponseWriter, r *http.Request) {
 	s.projectAdminChange(w, r, true)
 }
 
-// pageProjectAdminRemove 移除项目管理员。
+// pageProjectAdminRemove 移除频道管理员。
 func (s *Server) pageProjectAdminRemove(w http.ResponseWriter, r *http.Request) {
 	s.projectAdminChange(w, r, false)
 }
@@ -102,7 +102,7 @@ func (s *Server) projectAdminChange(w http.ResponseWriter, r *http.Request, add 
 		return
 	}
 	if !s.isProjectAdmin(r, p, u) {
-		s.renderError(w, r, http.StatusForbidden, "需要项目管理员权限。")
+		s.renderError(w, r, http.StatusForbidden, "需要频道管理员权限。")
 		return
 	}
 	username := strings.TrimSpace(r.PostFormValue("username"))
@@ -114,26 +114,26 @@ func (s *Server) projectAdminChange(w http.ResponseWriter, r *http.Request, add 
 	}
 	if add {
 		if err := s.store.AddProjectAdmin(r.Context(), p.ID, target.ID); err != nil {
-			s.logger.Error("新增项目管理员失败", "err", err)
+			s.logger.Error("新增频道管理员失败", "err", err)
 			s.renderError(w, r, http.StatusInternalServerError, "服务暂时不可用，请稍后再试。")
 			return
 		}
 		s.audit(r, &model.AuditLog{Event: "project_admin_added", ActorUserID: u.ID, ProjectID: p.ID, SubjectUserID: target.ID, Detail: truncate(username, 64)})
-		s.setFlash(w, "success", "已新增项目管理员。")
+		s.setFlash(w, "success", "已新增频道管理员。")
 	} else {
-		// 不允许移除创建者，避免项目失去唯一管理员
+		// 不允许移除创建者，避免频道失去唯一管理员
 		if target.ID == p.CreatedBy {
-			s.setFlash(w, "error", "项目创建者不能被移出管理员。")
+			s.setFlash(w, "error", "频道创建者不能被移出管理员。")
 			http.Redirect(w, r, "/projects/"+p.Slug+"/admin", http.StatusFound)
 			return
 		}
 		if err := s.store.RemoveProjectAdmin(r.Context(), p.ID, target.ID); err != nil {
-			s.logger.Error("移除项目管理员失败", "err", err)
+			s.logger.Error("移除频道管理员失败", "err", err)
 			s.renderError(w, r, http.StatusInternalServerError, "服务暂时不可用，请稍后再试。")
 			return
 		}
 		s.audit(r, &model.AuditLog{Event: "project_admin_removed", ActorUserID: u.ID, ProjectID: p.ID, SubjectUserID: target.ID, Detail: truncate(username, 64)})
-		s.setFlash(w, "success", "已移除项目管理员。")
+		s.setFlash(w, "success", "已移除频道管理员。")
 	}
 	http.Redirect(w, r, "/projects/"+p.Slug+"/admin", http.StatusSeeOther)
 }
@@ -147,7 +147,7 @@ func (s *Server) pageProjectBanAdd(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	if !s.isProjectAdmin(r, p, u) {
-		s.renderError(w, r, http.StatusForbidden, "需要项目管理员权限。")
+		s.renderError(w, r, http.StatusForbidden, "需要频道管理员权限。")
 		return
 	}
 	username := strings.TrimSpace(r.PostFormValue("username"))
@@ -218,7 +218,7 @@ func (s *Server) pageProjectBanRemove(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	if !s.isProjectAdmin(r, p, u) {
-		s.renderError(w, r, http.StatusForbidden, "需要项目管理员权限。")
+		s.renderError(w, r, http.StatusForbidden, "需要频道管理员权限。")
 		return
 	}
 	userID := r.PostFormValue("user_id")
@@ -242,12 +242,12 @@ func (s *Server) pageProjectBanRemove(w http.ResponseWriter, r *http.Request) {
 	http.Redirect(w, r, "/projects/"+p.Slug+"/admin", http.StatusSeeOther)
 }
 
-// pageProjectArchive 归档项目（只读）。
+// pageProjectArchive 归档频道（只读）。
 func (s *Server) pageProjectArchive(w http.ResponseWriter, r *http.Request) {
 	s.projectStatusChange(w, r, model.ProjectStatusArchived)
 }
 
-// pageProjectUnarchive 恢复项目。
+// pageProjectUnarchive 恢复频道。
 func (s *Server) pageProjectUnarchive(w http.ResponseWriter, r *http.Request) {
 	s.projectStatusChange(w, r, model.ProjectStatusActive)
 }
@@ -259,11 +259,11 @@ func (s *Server) projectStatusChange(w http.ResponseWriter, r *http.Request, sta
 		return
 	}
 	if !s.isProjectAdmin(r, p, u) {
-		s.renderError(w, r, http.StatusForbidden, "需要项目管理员权限。")
+		s.renderError(w, r, http.StatusForbidden, "需要频道管理员权限。")
 		return
 	}
 	if err := s.store.SetProjectStatus(r.Context(), p.ID, status); err != nil {
-		s.logger.Error("变更项目状态失败", "err", err)
+		s.logger.Error("变更频道状态失败", "err", err)
 		s.renderError(w, r, http.StatusInternalServerError, "服务暂时不可用，请稍后再试。")
 		return
 	}

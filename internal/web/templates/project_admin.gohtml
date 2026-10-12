@@ -1,12 +1,12 @@
 {{define "content"}}
 {{$p := .Data.Project}}
 <div class="page-head">
-  <h1>项目管理 · {{$p.Name}}</h1>
-  <div class="actions"><a class="btn" href="/projects/{{$p.Slug}}">返回项目</a></div>
+  <h1>频道管理 · {{$p.Name}}</h1>
+  <div class="actions"><a class="btn" href="/projects/{{$p.Slug}}">返回频道</a></div>
 </div>
 <div class="card">
   <h2>管理员</h2>
-  <p class="muted">项目管理员可维护 AGENTS.md、关闭/重开留言板、管理禁言；平台管理员隐式拥有全部项目管理权限。创建者不能被移出。</p>
+  <p class="muted">频道管理员可维护 AGENTS.md、关闭/重开留言板、管理禁言；平台管理员隐式拥有全部频道管理权限。创建者不能被移出。</p>
   {{if .Data.Admins}}
   <table>
     <thead><tr><th>用户</th><th>角色</th><th>操作</th></tr></thead>
@@ -14,7 +14,7 @@
       {{range .Data.Admins}}
       <tr>
         <td>{{.DisplayName}}（{{.Username}}）</td>
-        <td>{{if .IsAdmin}}平台管理员{{else}}项目管理员{{end}}{{if eq .ID $p.CreatedBy}} <span class="badge">创建者</span>{{end}}</td>
+        <td>{{if .IsAdmin}}平台管理员{{else}}频道管理员{{end}}{{if eq .ID $p.CreatedBy}} <span class="badge">创建者</span>{{end}}</td>
         <td class="actions">
           {{if ne .ID $p.CreatedBy}}
           <form method="post" action="/projects/{{$p.Slug}}/admins/remove" class="inline-form">
@@ -92,16 +92,16 @@
   {{end}}
 </div>
 <div class="card">
-  <h2>项目状态</h2>
+  <h2>频道状态</h2>
   {{if eq $p.Status "active"}}
   <form method="post" action="/projects/{{$p.Slug}}/archive" class="inline-form" data-confirm="归档后全部留言板只读，确定？">
     <input type="hidden" name="csrf_token" value="{{.CSRFToken}}">
-    <button type="submit" class="btn btn-danger">归档项目</button>
+    <button type="submit" class="btn btn-danger">归档频道</button>
   </form>
   {{else}}
   <form method="post" action="/projects/{{$p.Slug}}/unarchive" class="inline-form">
     <input type="hidden" name="csrf_token" value="{{.CSRFToken}}">
-    <button type="submit" class="btn">恢复项目</button>
+    <button type="submit" class="btn">恢复频道</button>
   </form>
   {{end}}
 </div>

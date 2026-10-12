@@ -8,17 +8,17 @@ import (
 	"agentpermit/internal/store"
 )
 
-// getProject 按 slug 取项目，失败统一 404。
+// getProject 按 slug 取频道，失败统一 404。
 func (s *Server) getProject(w http.ResponseWriter, r *http.Request) *model.Project {
 	p, err := s.store.GetProjectBySlug(r.Context(), r.PathValue("slug"))
 	if err != nil {
-		s.renderError(w, r, http.StatusNotFound, "项目不存在。")
+		s.renderError(w, r, http.StatusNotFound, "频道不存在。")
 		return nil
 	}
 	return p
 }
 
-// isProjectAdmin 平台管理员隐式拥有全部项目管理权限。
+// isProjectAdmin 平台管理员隐式拥有全部频道管理权限。
 func (s *Server) isProjectAdmin(r *http.Request, p *model.Project, u *model.User) bool {
 	if u == nil {
 		return false
@@ -28,14 +28,14 @@ func (s *Server) isProjectAdmin(r *http.Request, p *model.Project, u *model.User
 	}
 	ok, err := s.store.IsProjectAdmin(r.Context(), p.ID, u.ID)
 	if err != nil {
-		s.logger.Error("查询项目管理员失败", "err", err)
+		s.logger.Error("查询频道管理员失败", "err", err)
 		return false
 	}
 	return ok
 }
 
-// pageProject 项目根页面：AGENTS.md（latest 发布版）、留言板列表、新建留言板入口。
-// 该页的 AGENTS.md 是项目唯一的官方引导位置。
+// pageProject 频道根页面：AGENTS.md（latest 发布版）、留言板列表、新建留言板入口。
+// 该页的 AGENTS.md 是频道唯一的官方引导位置。
 func (s *Server) pageProject(w http.ResponseWriter, r *http.Request) {
 	u := userFrom(r.Context())
 	p := s.getProject(w, r)
@@ -48,7 +48,7 @@ func (s *Server) pageProject(w http.ResponseWriter, r *http.Request) {
 		s.renderError(w, r, http.StatusInternalServerError, "服务暂时不可用，请稍后再试。")
 		return
 	}
-	// AGENTS.md：latest 发布版对外展示；未发布时提示项目尚未发布引导
+	// AGENTS.md：latest 发布版对外展示；未发布时提示频道尚未发布引导
 	var doc *model.ProjectDocVersion
 	if latest, err := s.store.GetDocLatest(r.Context(), p.ID); err == nil {
 		doc = latest
@@ -65,7 +65,7 @@ func (s *Server) pageProject(w http.ResponseWriter, r *http.Request) {
 }
 
 // pageThreadCreate 创建留言板（仅真人；Agent 无法登录网页，也无法走 API 创建）。
-// 被项目禁言（可读不可写）的真人同样不能创建。
+// 被频道禁言（可读不可写）的真人同样不能创建。
 func (s *Server) pageThreadCreate(w http.ResponseWriter, r *http.Request) {
 	u := userFrom(r.Context())
 	p := s.getProject(w, r)
@@ -79,7 +79,7 @@ func (s *Server) pageThreadCreate(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	if banned {
-		s.setFlash(w, "error", "你已被项目禁言（可读不可写），不能新建留言板。")
+		s.setFlash(w, "error", "你已被频道禁言（可读不可写），不能新建留言板。")
 		http.Redirect(w, r, "/projects/"+p.Slug, http.StatusFound)
 		return
 	}
@@ -105,7 +105,7 @@ func (s *Server) pageThreadCreate(w http.ResponseWriter, r *http.Request) {
 	if err := s.store.CreateThread(r.Context(), t, body); err != nil {
 		switch err {
 		case store.ErrProjectArchived:
-			s.setFlash(w, "error", "项目已归档，不能新建留言板。")
+			s.setFlash(w, "error", "频道已归档，不能新建留言板。")
 			http.Redirect(w, r, "/projects/"+p.Slug, http.StatusFound)
 		default:
 			s.logger.Error("创建留言板失败", "err", err)

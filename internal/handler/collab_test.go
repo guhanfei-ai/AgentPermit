@@ -57,21 +57,21 @@ func getJSON(t *testing.T, base, path, bearer string) (int, map[string]any) {
 	return resp.StatusCode, out
 }
 
-// seedProjectViaWeb 用网页流程创建项目（真人操作）。
+// seedProjectViaWeb 用网页流程创建频道（真人操作）。
 func seedProjectViaWeb(t *testing.T, e *testEnv, owner *model.User, slug string) *model.Project {
 	t.Helper()
 	c := newHTTPClient(t, e.ts.URL)
 	c.loginViaWeb(owner.Username, testPassword)
 	c.refreshCSRF("/square")
 	resp, _ := c.postForm("/projects", url.Values{
-		"name": {"项目-" + slug}, "slug": {slug}, "description": {"协作空间测试"},
+		"name": {"频道-" + slug}, "slug": {slug}, "description": {"协作空间测试"},
 	})
 	if resp.StatusCode != http.StatusSeeOther {
-		t.Fatalf("创建项目失败: %d", resp.StatusCode)
+		t.Fatalf("创建频道失败: %d", resp.StatusCode)
 	}
 	p, err := e.st.GetProjectBySlug(e.ctx, slug)
 	if err != nil {
-		t.Fatalf("查询项目失败: %v", err)
+		t.Fatalf("查询频道失败: %v", err)
 	}
 	return p
 }
@@ -96,12 +96,12 @@ func seedThreadViaWeb(t *testing.T, e *testEnv, owner *model.User, p *model.Proj
 }
 
 // TestCollabLoop 验证交接文档建议的协作闭环：
-// 真人创建项目与线程 → 不同真人名下的两个 Agent 追加消息 →
+// 真人创建频道与线程 → 不同真人名下的两个 Agent 追加消息 →
 // 新会话的 Agent 按楼层增量接手 → 管理员禁止某真人后其全部 Agent 无法发言 →
 // 精准禁单个 Agent 只影响该 Agent → 真人网页追加与关闭/重开。
 func TestCollabLoop(t *testing.T) {
 	e := newTestEnv(t)
-	wangwu := e.seedUser("wangwu", "王五")     // 项目管理员
+	wangwu := e.seedUser("wangwu", "王五")     // 频道管理员
 	zhangsan := e.seedUser("zhangsan", "张三") // 协作者
 	lisi := e.seedUser("lisi", "李四")         // 协作者
 
@@ -141,7 +141,7 @@ func TestCollabLoop(t *testing.T) {
 	// 3) Agent 不能创建留言板：无 API 路由（405），网页路由对 Bearer 不构成登录态（302 跳登录）
 	code, _ = postJSON(t, e.ts.URL, "/api/v1/projects", zToken1, `{"name":"x"}`)
 	if code != http.StatusMethodNotAllowed {
-		t.Fatalf("Agent 创建项目应 405: %d", code)
+		t.Fatalf("Agent 创建频道应 405: %d", code)
 	}
 	req, _ := http.NewRequest(http.MethodPost, e.ts.URL+"/projects/"+p.Slug+"/threads", strings.NewReader(""))
 	req.Header.Set("Authorization", "Bearer "+zToken1)
@@ -175,7 +175,7 @@ func TestCollabLoop(t *testing.T) {
 	if code != http.StatusOK {
 		t.Fatalf("禁言后读取应 200: %d", code)
 	}
-	// 张三本人网页追加也被拒（留言板页因禁言无表单，CSRF 从项目页取）
+	// 张三本人网页追加也被拒（留言板页因禁言无表单，CSRF 从频道页取）
 	zc := newHTTPClient(t, e.ts.URL)
 	zc.loginViaWeb(zhangsan.Username, testPassword)
 	zc.refreshCSRF("/projects/" + p.Slug)
@@ -183,7 +183,7 @@ func TestCollabLoop(t *testing.T) {
 	if resp.StatusCode != http.StatusFound {
 		t.Fatalf("user 级禁言应拦截本人网页追加: %d", resp.StatusCode)
 	}
-	if page := zc.getBody("/threads/" + thread.ID); !strings.Contains(page, "已被项目禁言") {
+	if page := zc.getBody("/threads/" + thread.ID); !strings.Contains(page, "已被频道禁言") {
 		t.Fatalf("网页应提示被禁言")
 	}
 	// 李四不受影响
@@ -253,12 +253,12 @@ func TestCollabLoop(t *testing.T) {
 		t.Fatalf("重开后追加应 201: %d", code)
 	}
 
-	// 9) 非项目管理员不能访问管理页
+	// 9) 非频道管理员不能访问管理页
 	zc2 := newHTTPClient(t, e.ts.URL)
 	zc2.loginViaWeb(zhangsan.Username, testPassword)
 	resp = zc2.get("/projects/" + p.Slug + "/admin")
 	if resp.StatusCode != http.StatusForbidden {
-		t.Fatalf("非项目管理员访问管理页应 403: %d", resp.StatusCode)
+		t.Fatalf("非频道管理员访问管理页应 403: %d", resp.StatusCode)
 	}
 }
 
@@ -286,24 +286,24 @@ func TestThreadAPIGuards(t *testing.T) {
 	if code != http.StatusNotFound {
 		t.Fatalf("不存在留言板应 404: %d", code)
 	}
-	// 归档项目 → 409 project_archived
+	// 归档频道 → 409 project_archived
 	if err := e.st.SetProjectStatus(e.ctx, p.ID, model.ProjectStatusArchived); err != nil {
 		t.Fatal(err)
 	}
 	code, body = postJSON(t, e.ts.URL, "/api/v1/threads/"+thread.ID+"/floors", token, `{"body":"x"}`)
 	if code != http.StatusConflict || body["error"].(map[string]any)["code"] != "project_archived" {
-		t.Fatalf("归档项目追加应 409 project_archived: %d %v", code, body)
+		t.Fatalf("归档频道追加应 409 project_archived: %d %v", code, body)
 	}
-	// 归档项目不能新建留言板
+	// 归档频道不能新建留言板
 	admin := newHTTPClient(t, e.ts.URL)
 	admin.loginViaWeb(wangwu.Username, testPassword)
 	admin.refreshCSRF("/projects/" + p.Slug)
 	resp, _ := admin.postForm("/projects/"+p.Slug+"/threads", url.Values{"title": {"t2"}, "body": {"b"}})
 	if resp.StatusCode != http.StatusFound {
-		t.Fatalf("归档项目新建留言板应被拒: %d", resp.StatusCode)
+		t.Fatalf("归档频道新建留言板应被拒: %d", resp.StatusCode)
 	}
 	if page := admin.getBody("/projects/" + p.Slug); !strings.Contains(page, "已归档") {
-		t.Fatalf("项目页应提示已归档")
+		t.Fatalf("频道页应提示已归档")
 	}
 }
 
@@ -430,7 +430,7 @@ func TestAgentsmdVersioning(t *testing.T) {
 		t.Fatalf("回滚后 Agent 应读到 v1: %v", doc)
 	}
 
-	// 非项目管理员不能进编辑页
+	// 非频道管理员不能进编辑页
 	zc := newHTTPClient(t, e.ts.URL)
 	zc.loginViaWeb(zhangsan.Username, testPassword)
 	resp := zc.get("/projects/" + p.Slug + "/agents-md")
@@ -438,19 +438,19 @@ func TestAgentsmdVersioning(t *testing.T) {
 		t.Fatalf("非管理员访问 AGENTS.md 编辑页应 403: %d", resp.StatusCode)
 	}
 
-	// 项目列表与线程列表 API 可用
+	// 频道列表与线程列表 API 可用
 	code, body = getJSON(t, e.ts.URL, "/api/v1/projects", token)
 	if code != http.StatusOK || len(body["projects"].([]any)) != 1 {
-		t.Fatalf("项目列表应含 1 项: %d %v", code, body)
+		t.Fatalf("频道列表应含 1 项: %d %v", code, body)
 	}
 	code, body = getJSON(t, e.ts.URL, "/api/v1/projects/"+p.ID+"/threads", token)
 	if code != http.StatusOK || len(body["threads"].([]any)) != 0 {
 		t.Fatalf("线程列表应为空: %d %v", code, body)
 	}
-	// slug 也能定位项目
+	// slug 也能定位频道
 	code, body = getJSON(t, e.ts.URL, "/api/v1/projects/"+p.Slug, token)
 	if code != http.StatusOK {
-		t.Fatalf("按 slug 读项目应 200: %d", code)
+		t.Fatalf("按 slug 读频道应 200: %d", code)
 	}
 }
 

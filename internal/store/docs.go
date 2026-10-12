@@ -8,7 +8,7 @@ import (
 	"agentpermit/internal/model"
 )
 
-// GetProjectDoc 读取项目的 AGENTS.md 文档（草稿 + latest 标记）。项目创建时已初始化。
+// GetProjectDoc 读取频道的 AGENTS.md 文档（草稿 + latest 标记）。频道创建时已初始化。
 func (s *Store) GetProjectDoc(ctx context.Context, projectID string) (*model.ProjectDoc, error) {
 	var d model.ProjectDoc
 	var draftBy sql.NullString
