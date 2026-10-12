@@ -40,16 +40,16 @@ func (e *e2eEnv) callMachine(agentToken, machineID string) (int, string) {
 	return resp.StatusCode, string(b)
 }
 
-// 完整链路：允许 → 拉黑立即拒绝 → 白名单模式 → 撤销 Agent → 机器不存在
+// 完整链路：允许 → 拉黑立即拒绝 → 白名单模式 → 撤销凭证 → 机器不存在
 func TestE2EFullChain(t *testing.T) {
 	e := newTestEnv(t)
 	wangwu := e.seedUser("wangwu", "王五")     // 能力提供者
 	zhangsan := e.seedUser("zhangsan", "张三") // 调用者
 	lisi := e.seedUser("lisi", "李四")         // 调用者
 	capability, svcToken := e.seedCapability(wangwu, "machine-spec")
-	_, zToken1 := e.seedAgent(zhangsan, "张三-Agent-1")
-	_, zToken2 := e.seedAgent(zhangsan, "张三-Agent-2")
-	lAgent, lToken := e.seedAgent(lisi, "李四-Agent")
+	_, zToken1 := e.seedCredential(zhangsan, "张三-Agent-1")
+	_, zToken2 := e.seedCredential(zhangsan, "张三-Agent-2")
+	lAgent, lToken := e.seedCredential(lisi, "李四-Agent")
 
 	env := newE2EEnv(t, e.ts.URL, svcToken)
 
@@ -97,14 +97,14 @@ func TestE2EFullChain(t *testing.T) {
 	}
 	// 张三还在黑名单（黑名单优先）；另找无关用户验证 not_allowlisted
 	other := e.seedUser("wangmazi", "王麻子")
-	_, otherToken := e.seedAgent(other, "wmz-agent")
+	_, otherToken := e.seedCredential(other, "wmz-agent")
 	code, body = env.callMachine(otherToken, "machine-001")
 	if code != 403 || !containsAll(body, "user_not_allowlisted") {
 		t.Fatalf("白名单模式下无关用户应 403 user_not_allowlisted: %d %s", code, body)
 	}
 
 	// 4) 撤销李四的 Agent：原 Token 不能再发现能力或调用服务
-	if err := e.st.RevokeAgent(e.ctx, lAgent.ID, lisi.ID); err != nil {
+	if err := e.st.RevokeAgentCredential(e.ctx, lAgent.ID, lisi.ID); err != nil {
 		t.Fatal(err)
 	}
 	resp, apiBody := newHTTPClient(t, e.ts.URL).apiGet("/api/v1/capabilities", lToken)
@@ -119,7 +119,7 @@ func TestE2EFullChain(t *testing.T) {
 	// 5) 机器不存在：授权成功后 404
 	code, _ = env.callMachine(zToken1, "machine-999") // 张三已被拉黑，先换所有者验证
 	_ = code
-	_, ownerToken := e.seedAgent(wangwu, "owner-agent")
+	_, ownerToken := e.seedCredential(wangwu, "owner-agent")
 	code, body = env.callMachine(ownerToken, "machine-999")
 	if code != 404 || !containsAll(body, "machine_not_found") {
 		t.Fatalf("不存在的机器应在授权成功后 404: %d %s", code, body)
@@ -139,7 +139,7 @@ func TestE2EFailClosed(t *testing.T) {
 	e := newTestEnv(t)
 	wangwu := e.seedUser("wangwu", "王五")
 	_, svcToken := e.seedCapability(wangwu, "fail-closed-cap")
-	_, agentToken := e.seedAgent(wangwu, "owner-agent")
+	_, agentToken := e.seedCredential(wangwu, "owner-agent")
 
 	// 指向不可达的平台地址
 	env := newE2EEnv(t, "http://127.0.0.1:1", svcToken)
@@ -179,7 +179,7 @@ func TestE2EDenylistImmediateEffect(t *testing.T) {
 	wangwu := e.seedUser("wangwu", "王五")
 	zhangsan := e.seedUser("zhangsan", "张三")
 	capability, svcToken := e.seedCapability(wangwu, "immediate-cap")
-	_, zToken := e.seedAgent(zhangsan, "z-agent")
+	_, zToken := e.seedCredential(zhangsan, "z-agent")
 	env := newE2EEnv(t, e.ts.URL, svcToken)
 
 	// 允许 → 拉黑 → 下一次调用立即拒绝（无缓存）

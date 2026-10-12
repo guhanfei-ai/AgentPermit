@@ -1,20 +1,23 @@
 package handler
 
 import (
+	"errors"
 	"net/http"
 	"strings"
 
 	"agentpermit/internal/auth"
 	"agentpermit/internal/model"
+	"agentpermit/internal/store"
 )
 
 type accessPageData struct {
-	Capability    *model.Capability
-	Denylist      []*model.ListEntry
-	Allowlist     []*model.ListEntry
-	Cred          *model.ServiceCredential
-	Query         string
-	SearchResults []*model.User
+	Capability     *model.Capability
+	Denylist       []*model.ListEntry
+	Allowlist      []*model.ListEntry
+	Cred           *model.ServiceCredential
+	HasHTTPBinding bool
+	Query          string
+	SearchResults  []*model.User
 }
 
 func (s *Server) pageCapabilityAccess(w http.ResponseWriter, r *http.Request) {
@@ -37,12 +40,18 @@ func (s *Server) pageCapabilityAccess(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	cred, err := s.store.GetServiceCredentialByCapability(ctx, c.ID)
-	if err != nil {
+	if err != nil && !errors.Is(err, store.ErrNotFound) {
 		s.logger.Error("查询服务凭证失败", "err", err)
 		s.renderError(w, r, http.StatusInternalServerError, "服务暂时不可用。")
 		return
 	}
-	data := &accessPageData{Capability: c, Denylist: deny, Allowlist: allow, Cred: cred}
+	latest, err := s.store.GetCapabilityLatestSnapshot(ctx, c.ID)
+	if err != nil {
+		s.logger.Error("查询发布版本失败", "err", err)
+		s.renderError(w, r, http.StatusInternalServerError, "服务暂时不可用。")
+		return
+	}
+	data := &accessPageData{Capability: c, Denylist: deny, Allowlist: allow, Cred: cred, HasHTTPBinding: latest.HasHTTPBinding()}
 	if q := strings.TrimSpace(r.URL.Query().Get("q")); q != "" {
 		data.Query = q
 		results, err := s.store.SearchUsers(ctx, q, u.ID, 10)
@@ -111,7 +120,7 @@ func (s *Server) pageDenyAdd(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	s.audit(r, &model.AuditLog{Event: "capability_denylist_added", ActorUserID: u.ID, CapabilityID: c.ID, SubjectUserID: target.ID, Detail: truncate(target.Username, 32)})
-	s.setFlash(w, "success", "已将 "+target.DisplayName+"（"+target.Username+"）加入黑名单，其所有 Agent 立即无法调用该能力。")
+	s.setFlash(w, "success", "已将 "+target.DisplayName+"（"+target.Username+"）加入黑名单，使用其名下所有凭证访问该能力均被拒绝，凭证本身未撤销。")
 	http.Redirect(w, r, "/capabilities/"+c.ID+"/access", http.StatusFound)
 }
 
@@ -179,13 +188,34 @@ func (s *Server) pageServiceTokenRotate(w http.ResponseWriter, r *http.Request) 
 	if c == nil {
 		return
 	}
+	latest, err := s.store.GetCapabilityLatestSnapshot(r.Context(), c.ID)
+	if err != nil {
+		s.logger.Error("查询发布版本失败", "err", err)
+		s.renderError(w, r, http.StatusInternalServerError, "服务暂时不可用。")
+		return
+	}
+	if !latest.HasHTTPBinding() {
+		s.setFlash(w, "error", "latest 版本没有 HTTP 工具绑定，无需 Service Token。请先发布完整绑定。")
+		http.Redirect(w, r, "/capabilities/"+c.ID+"/access", http.StatusFound)
+		return
+	}
+	cred, err := s.store.GetServiceCredentialByCapability(r.Context(), c.ID)
+	if err != nil && !errors.Is(err, store.ErrNotFound) {
+		s.logger.Error("查询服务凭证失败", "err", err)
+		s.renderError(w, r, http.StatusInternalServerError, "服务暂时不可用。")
+		return
+	}
 	token, hash, hint := auth.NewToken(auth.ServiceTokenPrefix)
 	if err := s.store.RotateServiceToken(r.Context(), c.ID, u.ID, hash, hint); err != nil {
 		s.logger.Error("轮换 Service Token 失败", "err", err)
 		s.renderError(w, r, http.StatusInternalServerError, "服务暂时不可用。")
 		return
 	}
-	s.audit(r, &model.AuditLog{Event: "capability_service_token_rotated", ActorUserID: u.ID, CapabilityID: c.ID})
+	event := "capability_service_token_rotated"
+	if cred == nil {
+		event = "capability_service_token_created"
+	}
+	s.audit(r, &model.AuditLog{Event: event, ActorUserID: u.ID, CapabilityID: c.ID})
 	s.setOnceSecret(w, "service_token", c.ID, token)
 	http.Redirect(w, r, "/capabilities/"+c.ID+"/service-token", http.StatusSeeOther)
 }

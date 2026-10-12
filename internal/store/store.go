@@ -28,7 +28,7 @@ var (
 	ErrThreadFull = errors.New("thread full")
 	// ErrProjectArchived 项目已归档，只读。
 	ErrProjectArchived = errors.New("project archived")
-	// ErrBanned 发言者被项目禁言（user 级覆盖全部 Agent，agent 级只覆盖单个 Agent）。
+	// ErrBanned 发言者被项目禁言（账号级覆盖所有调用凭证，单凭证限制只作用于指定记录）。
 	ErrBanned = errors.New("banned")
 )
 

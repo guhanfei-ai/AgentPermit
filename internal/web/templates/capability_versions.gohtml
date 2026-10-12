@@ -46,7 +46,7 @@
     <summary>查看各版本内容</summary>
     {{range .Data.Versions}}
     <h3>v{{.Version}}{{if eq .Version $c.LatestVersion}}（latest）{{end}}</h3>
-    <p class="muted">{{.Description}} · <code>{{.HTTPMethod}} {{.APIPath}}</code> · {{.EndpointURL}}</p>
+    <p class="muted">{{.Description}} · {{if .HasHTTPBinding}}<code>{{.HTTPMethod}} {{.APIPath}}</code> · {{.EndpointURL}}{{else}}纯内容{{end}}</p>
     <pre class="spec">{{.SpecMarkdown}}</pre>
     {{end}}
   </details>

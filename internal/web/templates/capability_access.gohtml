@@ -19,7 +19,7 @@
 </div>
 
 <div class="card">
-  <h2>黑名单（按真人账号，覆盖其所有 Agent）</h2>
+  <h2>黑名单（按真人账号，覆盖其所有调用凭证）</h2>
   {{if .Data.Denylist}}
   <table>
     <thead><tr><th>用户</th><th>用户名</th><th>加入时间</th><th></th></tr></thead>
@@ -75,7 +75,7 @@
         <td>{{.DisplayName}}</td><td><code>{{.Username}}</code></td>
         <td>{{if eq .Status "active"}}<span class="badge ok">active</span>{{else}}<span class="badge dead">disabled</span>{{end}}</td>
         <td class="actions">
-          <form method="post" action="/capabilities/{{$c.ID}}/denylist/add" class="inline-form" data-confirm="将该账号加入黑名单后，其所有 Agent 将立即无法调用该能力。确定？">
+          <form method="post" action="/capabilities/{{$c.ID}}/denylist/add" class="inline-form" data-confirm="将该账号加入黑名单后，使用其名下所有凭证访问该能力都会被拒绝，凭证本身不撤销。确定？">
             <input type="hidden" name="csrf_token" value="{{$csrf}}">
             <input type="hidden" name="user_id" value="{{.ID}}">
             <button type="submit" class="btn btn-small btn-danger">加入黑名单</button>
@@ -95,11 +95,19 @@
 
 <div class="card">
   <h2>Service Token（独立服务验证凭证）</h2>
+  {{if .Data.HasHTTPBinding}}
+  {{if .Data.Cred}}
   <p class="muted">当前凭证：{{.Data.Cred.TokenHint}}{{if .Data.Cred.RotatedAt}}，最近轮换 {{fmtTime .Data.Cred.RotatedAt.Time}}{{end}}</p>
+  {{else}}
+  <p class="muted">latest 版本已有 HTTP 工具绑定，可生成凭证并配置到独立服务。</p>
+  {{end}}
   <p class="muted">该 Token 只能用于本能力的 <code>POST /api/v1/service/authorize</code> 校验，不能当作 Agent Token，也不能登录网页。</p>
-  <form method="post" action="/capabilities/{{$c.ID}}/service-token/rotate" class="inline-form" data-confirm="轮换后旧 Service Token 立即失效，使用它的独立服务将无法通过校验，确定？">
+  <form method="post" action="/capabilities/{{$c.ID}}/service-token/rotate" class="inline-form" {{if .Data.Cred}}data-confirm="轮换后旧 Service Token 立即失效，使用它的独立服务将无法通过校验，确定？"{{end}}>
     <input type="hidden" name="csrf_token" value="{{$csrf}}">
-    <button type="submit" class="btn btn-primary">轮换 Service Token</button>
+    <button type="submit" class="btn btn-primary">{{if .Data.Cred}}轮换{{else}}生成{{end}} Service Token</button>
   </form>
+  {{else}}
+  <p class="muted">latest 版本是纯内容能力，无需 Service Token。添加 HTTP 工具绑定并发布后，可在此生成或轮换凭证。</p>
+  {{end}}
 </div>
 {{end}}

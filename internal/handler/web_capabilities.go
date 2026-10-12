@@ -26,23 +26,38 @@ func validateCapabilityInput(name, slug, desc, endpointURL, method, apiPath, spe
 	if len(desc) > 500 {
 		return "描述过长。"
 	}
-	u, err := url.Parse(endpointURL)
-	if err != nil || (u.Scheme != "http" && u.Scheme != "https") || u.Host == "" {
-		return "独立服务地址必须是合法的 http/https URL（如 http://127.0.0.1:9090）。"
-	}
-	if len(endpointURL) > 500 {
-		return "独立服务地址过长。"
-	}
-	if !allowedMethods[method] {
-		return "不支持的 HTTP 方法。"
-	}
-	if !strings.HasPrefix(apiPath, "/") || len(apiPath) > 200 || strings.ContainsAny(apiPath, " \t") {
-		return "业务路径必须以 / 开头，且不含空格。"
+	if endpointURL != "" || apiPath != "" {
+		if endpointURL == "" || apiPath == "" {
+			return "HTTP 工具绑定需同时填写独立服务地址和业务路径；纯内容能力请将两项留空。"
+		}
+		u, err := url.Parse(endpointURL)
+		if err != nil || (u.Scheme != "http" && u.Scheme != "https") || u.Host == "" {
+			return "独立服务地址必须是合法的 http/https URL（如 http://127.0.0.1:9090）。"
+		}
+		if len(endpointURL) > 500 {
+			return "独立服务地址过长。"
+		}
+		if !allowedMethods[method] {
+			return "不支持的 HTTP 方法。"
+		}
+		if !strings.HasPrefix(apiPath, "/") || len(apiPath) > 200 || strings.ContainsAny(apiPath, " \t") {
+			return "业务路径必须以 / 开头，且不含空格。"
+		}
 	}
 	if len(spec) > 20000 {
 		return "能力内容过长。"
 	}
 	return ""
+}
+
+// capabilityHTTPInput 无绑定时清空方法，避免表单默认 GET 被保存为工具声明。
+func capabilityHTTPInput(r *http.Request) (endpointURL, method, apiPath string) {
+	endpointURL = strings.TrimSpace(r.PostFormValue("endpoint_url"))
+	apiPath = strings.TrimSpace(r.PostFormValue("api_path"))
+	if endpointURL != "" || apiPath != "" {
+		method = strings.ToUpper(strings.TrimSpace(r.PostFormValue("http_method")))
+	}
+	return
 }
 
 func (s *Server) pageCapabilities(w http.ResponseWriter, r *http.Request) {
@@ -68,9 +83,7 @@ func (s *Server) pageCapabilityCreate(w http.ResponseWriter, r *http.Request) {
 	name := strings.TrimSpace(r.PostFormValue("name"))
 	slug := strings.ToLower(strings.TrimSpace(r.PostFormValue("slug")))
 	desc := strings.TrimSpace(r.PostFormValue("description"))
-	endpointURL := strings.TrimSpace(r.PostFormValue("endpoint_url"))
-	method := strings.ToUpper(strings.TrimSpace(r.PostFormValue("http_method")))
-	apiPath := strings.TrimSpace(r.PostFormValue("api_path"))
+	endpointURL, method, apiPath := capabilityHTTPInput(r)
 	spec := r.PostFormValue("spec_markdown")
 	mode := r.PostFormValue("access_mode")
 
@@ -87,7 +100,6 @@ func (s *Server) pageCapabilityCreate(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	svcToken, svcHash, svcHint := auth.NewToken(auth.ServiceTokenPrefix)
 	capability := &model.Capability{
 		ID:           store.NewID(),
 		OwnerUserID:  u.ID,
@@ -101,7 +113,13 @@ func (s *Server) pageCapabilityCreate(w http.ResponseWriter, r *http.Request) {
 		AccessMode:   mode,
 		Status:       model.StatusActive,
 	}
-	cred := &model.ServiceCredential{CapabilityID: capability.ID, TokenHash: svcHash, TokenHint: svcHint}
+	var svcToken string
+	var cred *model.ServiceCredential
+	if capability.HasHTTPBinding() {
+		var hash, hint string
+		svcToken, hash, hint = auth.NewToken(auth.ServiceTokenPrefix)
+		cred = &model.ServiceCredential{CapabilityID: capability.ID, TokenHash: hash, TokenHint: hint}
+	}
 	if err := s.store.CreateCapability(r.Context(), capability, cred); err != nil {
 		if err == store.ErrConflict {
 			fail("slug 已被占用。")
@@ -112,6 +130,11 @@ func (s *Server) pageCapabilityCreate(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	s.audit(r, &model.AuditLog{Event: "capability_created", ActorUserID: u.ID, CapabilityID: capability.ID, Detail: truncate(slug, 64)})
+	if cred == nil {
+		s.setFlash(w, "success", "能力内容已发布为 v1，并设为 latest。")
+		http.Redirect(w, r, "/capabilities/"+capability.ID+"/versions", http.StatusSeeOther)
+		return
+	}
 	s.setOnceSecret(w, "service_token", capability.ID, svcToken)
 	http.Redirect(w, r, "/capabilities/"+capability.ID+"/service-token", http.StatusSeeOther)
 }
@@ -148,9 +171,7 @@ func (s *Server) pageCapabilityUpdate(w http.ResponseWriter, r *http.Request) {
 	}
 	name := strings.TrimSpace(r.PostFormValue("name"))
 	desc := strings.TrimSpace(r.PostFormValue("description"))
-	endpointURL := strings.TrimSpace(r.PostFormValue("endpoint_url"))
-	method := strings.ToUpper(strings.TrimSpace(r.PostFormValue("http_method")))
-	apiPath := strings.TrimSpace(r.PostFormValue("api_path"))
+	endpointURL, method, apiPath := capabilityHTTPInput(r)
 	spec := r.PostFormValue("spec_markdown")
 	mode := r.PostFormValue("access_mode")
 
@@ -183,7 +204,7 @@ func (s *Server) pageCapabilityEnable(w http.ResponseWriter, r *http.Request) {
 }
 
 func (s *Server) pageCapabilityDisable(w http.ResponseWriter, r *http.Request) {
-	s.setCapabilityStatus(w, r, model.StatusDisabled, "capability_disabled", "能力已停用，所有 Agent（包括你自己的）将无法发现或调用。")
+	s.setCapabilityStatus(w, r, model.StatusDisabled, "capability_disabled", "能力已停用，所有账号及其调用凭证均无法发现或访问该能力。")
 }
 
 func (s *Server) setCapabilityStatus(w http.ResponseWriter, r *http.Request, status, event, msg string) {

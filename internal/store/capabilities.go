@@ -28,9 +28,9 @@ func scanCapability(row interface{ Scan(...any) error }) (*model.Capability, err
 	return &c, nil
 }
 
-// CreateCapability 在事务中创建能力、生成初始 Service Token 凭证记录，
+// CreateCapability 在事务中创建能力，按需保存初始 Service Token 凭证记录，
 // 并把初始内容发布为 v1 且 latest 指向它（创建即发布，团队立即可见）。
-// newCredHash/newCredHint 由调用方生成（凭证原文只在响应中展示一次）。
+// cred 可为 nil（纯内容能力）；凭证由调用方生成，原文只在响应中展示一次。
 func (s *Store) CreateCapability(ctx context.Context, c *model.Capability, cred *model.ServiceCredential) error {
 	c.CreatedAt = now()
 	c.UpdatedAt = c.CreatedAt
@@ -45,14 +45,16 @@ func (s *Store) CreateCapability(ctx context.Context, c *model.Capability, cred 
 		if err != nil {
 			return err
 		}
-		cred.CreatedAt = c.CreatedAt
-		_, err = tx.ExecContext(ctx, `INSERT INTO capability_service_credentials (capability_id, token_hash, token_hint, created_at) VALUES (?,?,?,?)`,
-			cred.CapabilityID, cred.TokenHash, cred.TokenHint, fmtTime(cred.CreatedAt))
-		if isUniqueViolation(err) {
-			return ErrConflict
-		}
-		if err != nil {
-			return err
+		if cred != nil {
+			cred.CreatedAt = c.CreatedAt
+			_, err = tx.ExecContext(ctx, `INSERT INTO capability_service_credentials (capability_id, token_hash, token_hint, created_at) VALUES (?,?,?,?)`,
+				cred.CapabilityID, cred.TokenHash, cred.TokenHint, fmtTime(cred.CreatedAt))
+			if isUniqueViolation(err) {
+				return ErrConflict
+			}
+			if err != nil {
+				return err
+			}
 		}
 		_, err = tx.ExecContext(ctx, `INSERT INTO capability_versions (id, capability_id, version, name, description, endpoint_url, http_method, api_path, spec_markdown, published_by, published_at)
 			VALUES (?,?,?,?,?,?,?,?,?,?,?)`,

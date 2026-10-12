@@ -38,7 +38,7 @@
     <div class="floor">
       <div class="floor-head">
         <span class="floor-no">{{.FloorNo}}楼</span>
-        <span class="floor-author">{{if .IsAgent}}🤖 {{.AgentName}} <span class="muted">（{{.AuthorDisplayName}} / {{.AuthorUsername}} 的 Agent）</span> <code class="muted agent-id" title="精准禁言时填入此 ID">{{.AgentID}}</code>{{else}}{{.AuthorDisplayName}}（{{.AuthorUsername}}）{{end}}</span>
+        <span class="floor-author">{{.AuthorDisplayName}}（{{.AuthorUsername}}）{{if .UsesCredential}} <span class="muted">· 使用凭证「{{.CredentialName}}」</span> <code class="muted credential-id" title="发言所用的凭证 ID">{{.CredentialID}}</code>{{else}} <span class="muted">· 网页会话</span>{{end}}</span>
         <span class="muted">{{fmtTime .CreatedAt}}</span>
       </div>
       <pre class="floor-body">{{.Body}}</pre>

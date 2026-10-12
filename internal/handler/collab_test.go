@@ -108,9 +108,9 @@ func TestCollabLoop(t *testing.T) {
 	p := seedProjectViaWeb(t, e, wangwu, "sre-collab")
 	thread := seedThreadViaWeb(t, e, wangwu, p, "值班交接")
 
-	zAgent1, zToken1 := e.seedAgent(zhangsan, "张三-Agent-1")
-	_, zToken2 := e.seedAgent(zhangsan, "张三-Agent-2")
-	_, lToken := e.seedAgent(lisi, "李四-Agent")
+	zAgent1, zToken1 := e.seedCredential(zhangsan, "张三-Agent-1")
+	_, zToken2 := e.seedCredential(zhangsan, "张三-Agent-2")
+	_, lToken := e.seedCredential(lisi, "李四-Agent")
 
 	// 1) 不同真人的两个 Agent 追加楼层
 	code, body := postJSON(t, e.ts.URL, "/api/v1/threads/"+thread.ID+"/floors", zToken1, `{"body":"张三 Agent-1：已接手，正在排查 disk-full 告警"}`)
@@ -269,7 +269,7 @@ func TestThreadAPIGuards(t *testing.T) {
 	zhangsan := e.seedUser("zhangsan", "张三")
 	p := seedProjectViaWeb(t, e, wangwu, "guards")
 	thread := seedThreadViaWeb(t, e, wangwu, p, "守卫测试")
-	_, token := e.seedAgent(zhangsan, "z-agent")
+	_, token := e.seedCredential(zhangsan, "z-agent")
 
 	// 无凭证 401
 	code, _ := postJSON(t, e.ts.URL, "/api/v1/threads/"+thread.ID+"/floors", "", `{"body":"x"}`)
@@ -314,7 +314,7 @@ func TestThreadFloorCap(t *testing.T) {
 	zhangsan := e.seedUser("zhangsan", "张三")
 	p := seedProjectViaWeb(t, e, wangwu, "cap-test")
 	thread := seedThreadViaWeb(t, e, wangwu, p, "上限测试")
-	_, token := e.seedAgent(zhangsan, "z-agent")
+	_, token := e.seedCredential(zhangsan, "z-agent")
 
 	// 直接灌楼层到 4999（含首帖），绕开逐层 API 调用提速
 	ts := time.Now().UTC().Format(model.TimeLayout)
@@ -362,7 +362,7 @@ func TestAgentsmdVersioning(t *testing.T) {
 	wangwu := e.seedUser("wangwu", "王五")
 	zhangsan := e.seedUser("zhangsan", "张三")
 	p := seedProjectViaWeb(t, e, wangwu, "agentsmd-test")
-	_, token := e.seedAgent(zhangsan, "z-agent")
+	_, token := e.seedCredential(zhangsan, "z-agent")
 
 	// 未发布时 Agent 读到 version 0
 	code, body := getJSON(t, e.ts.URL, "/api/v1/projects/"+p.ID, token)
@@ -461,7 +461,7 @@ func TestCapabilityVersions(t *testing.T) {
 	wangwu := e.seedUser("wangwu", "王五")
 	zhangsan := e.seedUser("zhangsan", "张三")
 	capability, _ := e.seedCapability(wangwu, "versioned-cap")
-	_, token := e.seedAgent(zhangsan, "z-agent")
+	_, token := e.seedCredential(zhangsan, "z-agent")
 
 	// 创建即 v1
 	code, body := getJSON(t, e.ts.URL, "/api/v1/capabilities/"+capability.ID, token)

@@ -195,30 +195,30 @@ func (e *testEnv) seedUserWithRole(username, displayName, role string) *model.Us
 	return u
 }
 
-// seedAgent 为用户创建 Agent，返回 (agent, 原始 Token)。
-func (e *testEnv) seedAgent(u *model.User, name string) (*model.Agent, string) {
+// seedCredential 为账号创建调用凭证，返回 (credential, 原始 Token)。
+func (e *testEnv) seedCredential(u *model.User, name string) (*model.AgentCredential, string) {
 	e.t.Helper()
 	token, hash, hint := auth.NewToken(auth.AgentTokenPrefix)
-	a := &model.Agent{
+	a := &model.AgentCredential{
 		ID: store.NewID(), OwnerUserID: u.ID, Name: name, Status: model.StatusActive,
 		TokenHash: hash, TokenHint: hint,
 	}
-	if err := e.st.CreateAgent(e.ctx, a); err != nil {
-		e.t.Fatalf("创建 Agent 失败: %v", err)
+	if err := e.st.CreateAgentCredential(e.ctx, a); err != nil {
+		e.t.Fatalf("创建调用凭证失败: %v", err)
 	}
 	return a, token
 }
 
 // seedCapability 为用户创建能力（含 Service Token），返回 (capability, 原始 Service Token)。
-// mustSeedAgent 用显式凭证（如旧前缀 Token）创建 Agent，供兼容性测试使用。
-func mustSeedAgent(e *testEnv, ownerUserID, name, tokenHash, hint string) *model.Agent {
+// mustSeedCredential 用显式 Token（如旧前缀）创建凭证记录，供兼容性测试使用。
+func mustSeedCredential(e *testEnv, ownerUserID, name, tokenHash, hint string) *model.AgentCredential {
 	e.t.Helper()
-	a := &model.Agent{
+	a := &model.AgentCredential{
 		ID: store.NewID(), OwnerUserID: ownerUserID, Name: name, Status: model.StatusActive,
 		TokenHash: tokenHash, TokenHint: hint,
 	}
-	if err := e.st.CreateAgent(e.ctx, a); err != nil {
-		e.t.Fatalf("创建 Agent 失败: %v", err)
+	if err := e.st.CreateAgentCredential(e.ctx, a); err != nil {
+		e.t.Fatalf("创建调用凭证失败: %v", err)
 	}
 	return a
 }

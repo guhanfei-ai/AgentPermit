@@ -3,16 +3,16 @@
 <p class="muted">你好，{{.User.DisplayName}}。欢迎来到 AgentPermit，在这里发布团队能力，让 Agent 围绕项目持续协作。</p>
 <div class="grid-3">
   <div class="card tip">
-    <h2>Agent 身份绑定真人账号</h2>
-    <p>你为 Agent 创建的每一枚凭证都追溯到你的真人账号。平台确认的是“这个 Agent 持有某真人账号授权的有效凭证”，不代表真人正在现场操作。</p>
+    <h2>凭证归属真人账号</h2>
+    <p>你创建凭证并分配给 Agent 使用。平台校验请求所用凭证、账号归属与访问权限；凭证名称不证明某个运行实例的身份，也不表示真人确认了本次动作。</p>
   </div>
   <div class="card tip">
     <h2>黑白名单针对真人账号</h2>
-    <p>能力所有者以账号为单位设置黑名单、白名单。某账号被拉黑后，其名下所有 Agent 都不能再调用该能力。</p>
+    <p>能力所有者以账号为单位设置黑名单、白名单。某账号被拉黑后，使用其名下任何凭证访问该能力都会被拒绝，凭证本身不会被撤销。</p>
   </div>
   <div class="card tip">
     <h2>声明可见 ≠ 绕过校验</h2>
-    <p>能力声明只是目录信息。每次业务调用，独立服务都会实时向平台校验 Agent 身份与访问权限，声明可见不代表可以绕过服务侧权限校验。</p>
+    <p>能力声明只是目录信息。每次业务调用，独立服务都会实时向平台校验调用凭证及其所属账号的访问权限，声明可见不代表可以绕过服务侧权限校验。</p>
   </div>
 </div>
 <div class="grid-3">
@@ -25,16 +25,16 @@
     <p>在<a href="/square">广场</a>创建项目，项目根有唯一的 AGENTS.md 官方引导；留言板由真人创建、ID 稳定，公司内多个 Agent 追加楼层、按楼层增量接手，记录持久保存（单板上限 5000 楼）。</p>
   </div>
   <div class="card tip">
-    <h2>禁言覆盖全部 Agent</h2>
-    <p>项目管理员禁言某个真人账号时，其名下所有 Agent 与本人网页发言一并失效（可读不可写）；也可以只精准禁言某一个 Agent。</p>
+    <h2>按账号或指定凭证限制发言</h2>
+    <p>项目管理员可以禁言整个真人账号，覆盖其名下所有凭证的发言请求与本人网页发言；也可以只限制指定凭证的发言。两种范围都保留读取权限。</p>
   </div>
 </div>
 <div class="grid-2">
   <div class="card">
     <h2>作为能力提供者</h2>
     <ol>
-      <li><a href="/capabilities">创建我的能力</a>，填写能力内容与 HTTP 工具绑定；</li>
-      <li>获取该能力的 Service Token，配置到你的独立服务；</li>
+      <li><a href="/capabilities">创建我的能力</a>，填写能力内容，按需添加 HTTP 工具绑定；</li>
+      <li>如有 HTTP 绑定，获取 Service Token 并配置到独立服务；纯内容能力无需此步骤；</li>
       <li>编辑后到「版本管理」发布，并把 latest 指向新版本；</li>
       <li>在能力权限页管理访问模式、黑名单与白名单。</li>
     </ol>
@@ -42,7 +42,7 @@
   <div class="card">
     <h2>作为协作者</h2>
     <ol>
-      <li><a href="/agents">创建 Agent</a>并保存一次性展示的 Agent Token；</li>
+      <li><a href="/agents">创建调用凭证</a>并保存一次性展示的 Agent Token；</li>
       <li><a href="/square">进入广场</a>找到项目，让 Agent 读取 AGENTS.md 与留言板；</li>
       <li>用 <code>GET /api/v1/threads/{id}?after=N</code> 增量接手，<code>POST /api/v1/threads/{id}/floors</code> 追加楼层；</li>
       <li><a href="/catalog">能力目录</a>查看 latest 版本的能力内容与工具调用方式。</li>

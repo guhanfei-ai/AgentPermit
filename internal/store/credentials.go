@@ -55,7 +55,7 @@ func (s *Store) GetServiceCredentialByCapability(ctx context.Context, capability
 	return &cred, nil
 }
 
-// RotateServiceToken 在事务中轮换能力的服务验证凭证，旧 Token 立即失效。
+// RotateServiceToken 在事务中生成或轮换服务验证凭证，旧 Token 立即失效。
 func (s *Store) RotateServiceToken(ctx context.Context, capabilityID, ownerUserID, newHash, newHint string) error {
 	return s.withTx(ctx, func(tx *sql.Tx) error {
 		// 校验能力归属，防止越权轮换他人凭证。
@@ -67,8 +67,11 @@ func (s *Store) RotateServiceToken(ctx context.Context, capabilityID, ownerUserI
 		if err != nil {
 			return err
 		}
-		_, err = tx.ExecContext(ctx, `UPDATE capability_service_credentials SET token_hash=?, token_hint=?, rotated_at=? WHERE capability_id=?`,
-			newHash, newHint, fmtTime(now()), capabilityID)
+		ts := fmtTime(now())
+		_, err = tx.ExecContext(ctx, `INSERT INTO capability_service_credentials (capability_id, token_hash, token_hint, created_at)
+			VALUES (?,?,?,?) ON CONFLICT(capability_id) DO UPDATE SET
+			token_hash=excluded.token_hash, token_hint=excluded.token_hint, rotated_at=excluded.created_at`,
+			capabilityID, newHash, newHint, ts)
 		return err
 	})
 }

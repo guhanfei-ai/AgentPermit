@@ -64,7 +64,7 @@ done
 curl -sf -o /dev/null http://127.0.0.1:8080/healthz || { echo "平台启动失败，查看 $PLATFORM_LOG"; exit 1; }
 echo "平台已启动: http://127.0.0.1:8080（日志 ${PLATFORM_LOG}）"
 
-say "3-6. 注册用户 / 创建 Agent / 发布能力（全部走网页表单 + CSRF）"
+say "3-6. 注册用户 / 创建调用凭证 / 发布能力（全部走网页表单 + CSRF）"
 python3 scripts/demo_flow.py setup
 # shellcheck disable=SC1090
 . "$CREDS"
@@ -96,7 +96,7 @@ expect() { # expect <code> <说明>
   echo "  ✓ $2"
 }
 
-say "8. 张三（两个 Agent）、李四（一个 Agent）调用机器服务，均成功"
+say "8. 张三（两条调用凭证）、李四（一条调用凭证）调用机器服务，均成功"
 call "$AGENT_ZHANGSAN_1" machine-001 "张三-Agent-1"; expect 200 "张三-Agent-1 成功"
 call "$AGENT_ZHANGSAN_2" machine-002 "张三-Agent-2"; expect 200 "张三-Agent-2 成功"
 call "$AGENT_LISI" machine-001 "李四-Agent"; expect 200 "李四-Agent 成功"
@@ -104,7 +104,7 @@ call "$AGENT_LISI" machine-001 "李四-Agent"; expect 200 "李四-Agent 成功"
 say "9. 王五把张三（真人账号）加入黑名单"
 python3 scripts/demo_flow.py deny wangwu zhangsan
 
-say "10. 张三的两个 Agent 全部被拒（user_blacklisted）"
+say "10. 张三的两条调用凭证全部被拒（user_blacklisted）"
 call "$AGENT_ZHANGSAN_1" machine-001; expect 403 "张三-Agent-1 被拒绝"
 call "$AGENT_ZHANGSAN_2" machine-001; expect 403 "张三-Agent-2 被拒绝（黑名单按账号生效）"
 
@@ -119,8 +119,8 @@ say "13. 李四成功；其他非所有者用户（张三）失败"
 call "$AGENT_LISI" machine-001; expect 200 "李四（白名单内）成功"
 call "$AGENT_ZHANGSAN_1" machine-001; expect 403 "张三（非白名单且被拉黑）失败"
 
-say "14. 撤销李四的 Agent"
-python3 scripts/demo_flow.py revoke-agent lisi
+say "14. 撤销李四的调用凭证"
+python3 scripts/demo_flow.py revoke-credential lisi
 
 say "15. 李四原有 Token 不能再发现能力或调用服务"
 call "$AGENT_LISI" machine-001; expect 401 "撤销后调用服务 → 401"

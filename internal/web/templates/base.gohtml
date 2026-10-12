@@ -8,12 +8,12 @@
 </head>
 <body>
 <header class="topbar">
-  <div class="brand"><a href="/">AgentPermit</a><span class="brand-sub">Agent 身份、能力发布与协作空间</span></div>
+  <div class="brand"><a href="/">AgentPermit</a></div>
   <nav class="nav">
     {{if .User}}
     <a href="/" class="{{navActive .Page "dashboard"}}">首页</a>
     <a href="/square" class="{{navActive .Page "square"}}">广场</a>
-    <a href="/agents" class="{{navActive .Page "agents"}}">我的 Agent</a>
+    <a href="/agents" class="{{navActive .Page "agents"}}">我的调用凭证</a>
     <a href="/capabilities" class="{{navActive .Page "capabilities"}}">我的能力</a>
     <a href="/catalog" class="{{navActive .Page "catalog"}}">能力目录</a>
     <a href="/audit" class="{{navActive .Page "audit"}}">审计</a>
@@ -36,7 +36,7 @@
   {{with .Flash}}<div class="flash flash-{{.Kind}}">{{.Text}}</div>{{end}}
   {{template "content" .}}
 </main>
-<footer class="footer">AgentPermit 提供身份、能力发布（版本 + latest 标记）、协作空间（项目 / 留言板 / AGENTS.md）、访问策略与审计；业务由独立服务执行。留言内容是协作记录，不构成可信执行授权。所有状态修改均记录审计。</footer>
+<footer class="footer">AgentPermit 提供账号凭证管理、能力发布（版本 + latest 标记）、协作空间（项目 / 留言板 / AGENTS.md）、访问策略与审计；业务由独立服务执行。留言内容是协作记录，不构成可信执行授权。所有状态修改均记录审计。</footer>
 <script src="/static/app.js"></script>
 </body>
 </html>{{end}}

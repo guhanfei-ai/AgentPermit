@@ -10,9 +10,9 @@ import (
 func fixture(mut ...func(in *Input)) Input {
 	owner := &model.User{ID: "u-owner", Username: "wangwu", Status: model.StatusActive}
 	caller := &model.User{ID: "u-caller", Username: "zhangsan", Status: model.StatusActive}
-	agent := &model.Agent{ID: "a-1", OwnerUserID: caller.ID, Status: model.StatusActive}
+	credential := &model.AgentCredential{ID: "a-1", OwnerUserID: caller.ID, Status: model.StatusActive}
 	capability := &model.Capability{ID: "c-1", OwnerUserID: owner.ID, Status: model.StatusActive, AccessMode: model.AccessModeTeam}
-	in := Input{Agent: agent, AgentOwner: caller, Capability: capability, CapOwner: owner}
+	in := Input{Credential: credential, CredentialOwner: caller, Capability: capability, CapOwner: owner}
 	for _, m := range mut {
 		m(&in)
 	}
@@ -69,8 +69,8 @@ func TestAllowlistModeRejectsUnlistedUser(t *testing.T) {
 func TestOwnerAlwaysAllowed(t *testing.T) {
 	// 6. 能力所有者允许（即使在 allowlist 模式且不在白名单中）
 	d := Evaluate(fixture(func(in *Input) {
-		in.Agent.OwnerUserID = "u-owner" // 调用 Agent 属于所有者
-		in.AgentOwner = &model.User{ID: "u-owner", Status: model.StatusActive}
+		in.Credential.OwnerUserID = "u-owner" // 调用 Agent 属于所有者
+		in.CredentialOwner = &model.User{ID: "u-owner", Status: model.StatusActive}
 		in.Capability.AccessMode = model.AccessModeAllowlist
 		in.Allowlisted = false
 	}))
@@ -79,17 +79,17 @@ func TestOwnerAlwaysAllowed(t *testing.T) {
 	}
 }
 
-func TestRevokedAgentRejected(t *testing.T) {
-	// 7. 已撤销 Agent 拒绝
-	d := Evaluate(fixture(func(in *Input) { in.Agent.Status = model.StatusRevoked }))
+func TestRevokedCredentialRejected(t *testing.T) {
+	// 7. 已撤销凭证拒绝
+	d := Evaluate(fixture(func(in *Input) { in.Credential.Status = model.StatusRevoked }))
 	if d.Allowed || d.Reason != ReasonAgentRevoked {
-		t.Fatalf("已撤销 Agent 应拒绝，得到 %+v", d)
+		t.Fatalf("已撤销凭证应拒绝，得到 %+v", d)
 	}
 }
 
 func TestDisabledUserRejected(t *testing.T) {
 	// 8. 已禁用用户拒绝（Agent 所属用户被禁用）
-	d := Evaluate(fixture(func(in *Input) { in.AgentOwner.Status = model.StatusDisabled }))
+	d := Evaluate(fixture(func(in *Input) { in.CredentialOwner.Status = model.StatusDisabled }))
 	if d.Allowed || d.Reason != ReasonUserDisabled {
 		t.Fatalf("禁用用户应拒绝，得到 %+v", d)
 	}
@@ -103,8 +103,8 @@ func TestDisabledCapabilityRejected(t *testing.T) {
 		t.Fatalf("停用能力应拒绝，得到 %+v", d)
 	}
 	// 所有者自己的 Agent 也会被拒绝
-	in.Agent.OwnerUserID = "u-owner"
-	in.AgentOwner = &model.User{ID: "u-owner", Status: model.StatusActive}
+	in.Credential.OwnerUserID = "u-owner"
+	in.CredentialOwner = &model.User{ID: "u-owner", Status: model.StatusActive}
 	d = Evaluate(in)
 	if d.Allowed || d.Reason != ReasonCapabilityDisabled {
 		t.Fatalf("停用能力对所有者也应拒绝，得到 %+v", d)
@@ -124,7 +124,7 @@ func TestAdminDoesNotBypass(t *testing.T) {
 	// role=admin 但非所有者、未在白名单中 → allowlist 模式下应拒绝
 	in := fixture(func(in *Input) {
 		in.Capability.AccessMode = model.AccessModeAllowlist
-		in.AgentOwner.Role = model.UserRoleAdmin
+		in.CredentialOwner.Role = model.UserRoleAdmin
 	})
 	d := Evaluate(in)
 	if d.Allowed {
@@ -133,7 +133,7 @@ func TestAdminDoesNotBypass(t *testing.T) {
 	// 黑名单同样对管理员生效
 	in2 := fixture(func(in *Input) {
 		in.Denied = true
-		in.AgentOwner.Role = model.UserRoleAdmin
+		in.CredentialOwner.Role = model.UserRoleAdmin
 	})
 	d2 := Evaluate(in2)
 	if d2.Allowed || d2.Reason != ReasonUserBlacklisted {
@@ -143,7 +143,7 @@ func TestAdminDoesNotBypass(t *testing.T) {
 
 func TestInvalidAgentToken(t *testing.T) {
 	// 补充：Token 无效（查无此 Agent）
-	d := Evaluate(Input{Agent: nil, Capability: &model.Capability{Status: model.StatusActive}, CapOwner: &model.User{Status: model.StatusActive}})
+	d := Evaluate(Input{Credential: nil, Capability: &model.Capability{Status: model.StatusActive}, CapOwner: &model.User{Status: model.StatusActive}})
 	if d.Allowed || d.Reason != ReasonInvalidAgentToken {
 		t.Fatalf("无效 Token 应拒绝，得到 %+v", d)
 	}

@@ -1,12 +1,27 @@
 package handler
 
 import (
+	"errors"
 	"net/http"
 	"strings"
 
 	"agentpermit/internal/model"
 	"agentpermit/internal/store"
 )
+
+// 禁言选择器只包含管理所需元数据，不把 Token 摘要或提示交给页面。
+type projectBanCredentialOption struct {
+	ID     string
+	Name   string
+	Status string
+}
+
+type projectBanTarget struct {
+	Username    string
+	DisplayName string
+	Status      string
+	Credentials []projectBanCredentialOption
+}
 
 // pageProjectAdmin 项目管理页：管理员、禁言、归档。仅项目管理员可访问。
 func (s *Server) pageProjectAdmin(w http.ResponseWriter, r *http.Request) {
@@ -31,11 +46,42 @@ func (s *Server) pageProjectAdmin(w http.ResponseWriter, r *http.Request) {
 		s.renderError(w, r, http.StatusInternalServerError, "服务暂时不可用，请稍后再试。")
 		return
 	}
+	username := strings.TrimSpace(r.URL.Query().Get("ban_username"))
+	var target *projectBanTarget
+	lookupError := ""
+	if len(username) > 64 {
+		lookupError = "用户名不能超过 64 个字符。"
+	} else if username != "" {
+		account, err := s.store.GetUserByUsername(r.Context(), username)
+		if errors.Is(err, store.ErrNotFound) {
+			lookupError = "未找到这个账号，请核对用户名。"
+		} else if err != nil {
+			s.logger.Error("查询禁言目标账号失败", "err", err)
+			s.renderError(w, r, http.StatusInternalServerError, "服务暂时不可用，请稍后再试。")
+			return
+		} else {
+			credentials, err := s.store.ListAgentCredentialsByOwner(r.Context(), account.ID)
+			if err != nil {
+				s.logger.Error("查询禁言目标凭证失败", "err", err)
+				s.renderError(w, r, http.StatusInternalServerError, "服务暂时不可用，请稍后再试。")
+				return
+			}
+			target = &projectBanTarget{Username: account.Username, DisplayName: account.DisplayName, Status: account.Status}
+			for _, credential := range credentials {
+				target.Credentials = append(target.Credentials, projectBanCredentialOption{
+					ID: credential.ID, Name: credential.Name, Status: credential.Status,
+				})
+			}
+		}
+	}
 	s.renderPage(w, r, http.StatusOK, "project_admin", "项目管理 · "+p.Name, "project", map[string]any{
-		"Project":         p,
-		"Admins":          admins,
-		"Bans":            bans,
-		"IsPlatformAdmin": u.IsAdmin(),
+		"Project":           p,
+		"Admins":            admins,
+		"Bans":              bans,
+		"IsPlatformAdmin":   u.IsAdmin(),
+		"BanTarget":         target,
+		"BanLookupUsername": username,
+		"BanLookupError":    lookupError,
 	})
 }
 
@@ -92,8 +138,8 @@ func (s *Server) projectAdminChange(w http.ResponseWriter, r *http.Request, add 
 	http.Redirect(w, r, "/projects/"+p.Slug+"/admin", http.StatusSeeOther)
 }
 
-// pageProjectBanAdd 添加禁言：username 必填；agent_id 留空 = user 级（覆盖其全部 Agent 与本人网页发言），
-// 填写则只精准禁言该 Agent（读取不受影响）。
+// pageProjectBanAdd 先确定账号，再按显式 scope 限制账号或单条凭证的发言。
+// 未携带 scope 的旧表单沿用 agent_id 空值为账号级的约定；读取不受禁言影响。
 func (s *Server) pageProjectBanAdd(w http.ResponseWriter, r *http.Request) {
 	u := userFrom(r.Context())
 	p := s.getProject(w, r)
@@ -105,7 +151,21 @@ func (s *Server) pageProjectBanAdd(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	username := strings.TrimSpace(r.PostFormValue("username"))
-	agentID := strings.TrimSpace(r.PostFormValue("agent_id"))
+	credentialID := strings.TrimSpace(r.PostFormValue("agent_id"))
+	scope := strings.TrimSpace(r.PostFormValue("scope"))
+	if _, explicit := r.PostForm["scope"]; !explicit {
+		// 旧网页表单的兼容路径，不改变已有请求语义。
+		scope = "user"
+		if credentialID != "" {
+			scope = "credential"
+		}
+	}
+	if (scope != "user" && scope != "credential") ||
+		(scope == "user" && credentialID != "") || (scope == "credential" && credentialID == "") {
+		s.setFlash(w, "error", "请选择明确的禁言范围；账号级不能携带凭证 ID，单凭证范围必须选择一条凭证。")
+		http.Redirect(w, r, "/projects/"+p.Slug+"/admin", http.StatusFound)
+		return
+	}
 	reason := strings.TrimSpace(r.PostFormValue("reason"))
 	if len(reason) > 200 {
 		reason = reason[:200]
@@ -116,20 +176,20 @@ func (s *Server) pageProjectBanAdd(w http.ResponseWriter, r *http.Request) {
 		http.Redirect(w, r, "/projects/"+p.Slug+"/admin", http.StatusFound)
 		return
 	}
-	if agentID != "" {
-		agent, err := s.store.GetAgentByID(r.Context(), agentID)
-		if err != nil || agent.OwnerUserID != target.ID {
-			s.setFlash(w, "error", "Agent 不存在或不属于该用户。")
+	if credentialID != "" {
+		credential, err := s.store.GetAgentCredentialByID(r.Context(), credentialID)
+		if err != nil || credential.OwnerUserID != target.ID {
+			s.setFlash(w, "error", "凭证不存在或不属于所选账号。")
 			http.Redirect(w, r, "/projects/"+p.Slug+"/admin", http.StatusFound)
 			return
 		}
 	}
 	ban := &model.ProjectBan{
-		ProjectID: p.ID,
-		UserID:    target.ID,
-		AgentID:   agentID,
-		Reason:    reason,
-		BannedBy:  u.ID,
+		ProjectID:    p.ID,
+		UserID:       target.ID,
+		CredentialID: credentialID,
+		Reason:       reason,
+		BannedBy:     u.ID,
 	}
 	if err := s.store.AddProjectBan(r.Context(), ban); err != nil {
 		if err == store.ErrConflict {
@@ -142,10 +202,10 @@ func (s *Server) pageProjectBanAdd(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	event := "project_agent_banned"
-	if agentID == "" {
+	if credentialID == "" {
 		event = "project_user_banned"
 	}
-	s.audit(r, &model.AuditLog{Event: event, ActorUserID: u.ID, ProjectID: p.ID, SubjectUserID: target.ID, AgentID: agentID, Reason: reason, Detail: truncate(username, 64)})
+	s.audit(r, &model.AuditLog{Event: event, ActorUserID: u.ID, ProjectID: p.ID, SubjectUserID: target.ID, CredentialID: credentialID, Reason: reason, Detail: truncate(username, 64)})
 	s.setFlash(w, "success", "已禁言。被禁言者仍可读取，但不可发言。")
 	http.Redirect(w, r, "/projects/"+p.Slug+"/admin", http.StatusSeeOther)
 }
@@ -162,8 +222,8 @@ func (s *Server) pageProjectBanRemove(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	userID := r.PostFormValue("user_id")
-	agentID := r.PostFormValue("agent_id")
-	if err := s.store.RemoveProjectBan(r.Context(), p.ID, userID, agentID); err != nil {
+	credentialID := r.PostFormValue("agent_id")
+	if err := s.store.RemoveProjectBan(r.Context(), p.ID, userID, credentialID); err != nil {
 		if err == store.ErrNotFound {
 			s.setFlash(w, "error", "禁言条目不存在。")
 			http.Redirect(w, r, "/projects/"+p.Slug+"/admin", http.StatusFound)
@@ -174,10 +234,10 @@ func (s *Server) pageProjectBanRemove(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	event := "project_agent_unbanned"
-	if agentID == "" {
+	if credentialID == "" {
 		event = "project_user_unbanned"
 	}
-	s.audit(r, &model.AuditLog{Event: event, ActorUserID: u.ID, ProjectID: p.ID, SubjectUserID: userID, AgentID: agentID})
+	s.audit(r, &model.AuditLog{Event: event, ActorUserID: u.ID, ProjectID: p.ID, SubjectUserID: userID, CredentialID: credentialID})
 	s.setFlash(w, "success", "已解除禁言。")
 	http.Redirect(w, r, "/projects/"+p.Slug+"/admin", http.StatusSeeOther)
 }

@@ -15,14 +15,14 @@
         <td>{{if eq .Status "active"}}<span class="badge ok">active</span>{{else}}<span class="badge dead">disabled</span>{{end}}</td>
         <td>{{if eq .AccessMode "team"}}团队可见{{else}}白名单{{end}}</td>
         <td>{{if gt .LatestVersion 0}}v{{.LatestVersion}}{{else}}未发布{{end}}</td>
-        <td class="muted">{{.EndpointURL}}</td>
+        <td class="muted">{{if .HasHTTPBinding}}{{.EndpointURL}}{{else}}纯内容{{end}}</td>
         <td class="muted">{{fmtTime .UpdatedAt}}</td>
         <td class="actions">
           <a class="btn btn-small" href="/capabilities/{{.ID}}/edit">编辑</a>
           <a class="btn btn-small" href="/capabilities/{{.ID}}/versions">版本</a>
           <a class="btn btn-small" href="/capabilities/{{.ID}}/access">权限管理</a>
           {{if eq .Status "active"}}
-          <form method="post" action="/capabilities/{{.ID}}/disable" class="inline-form" data-confirm="停用后所有 Agent（包括你自己的）都不能发现或调用该能力，确定？">
+          <form method="post" action="/capabilities/{{.ID}}/disable" class="inline-form" data-confirm="停用后所有账号及其调用凭证都不能发现或访问该能力，确定？">
             <input type="hidden" name="csrf_token" value="{{$.CSRFToken}}">
             <button type="submit" class="btn btn-small btn-danger">停用</button>
           </form>
@@ -38,7 +38,7 @@
     </tbody>
   </table>
   {{else}}
-  <div class="empty">还没有创建能力。<a href="/capabilities/new">创建第一个能力</a>，填写能力内容与 HTTP 工具绑定。创建时会发布首个版本，并生成该能力的 Service Token，供独立服务校验调用者。</div>
+  <div class="empty">还没有创建能力。<a href="/capabilities/new">创建第一个能力</a>，填写能力内容并按需绑定 HTTP 工具。创建时会发布首个版本；纯内容能力无需 Service Token。</div>
   {{end}}
 </div>
 {{end}}

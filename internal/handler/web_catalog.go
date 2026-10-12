@@ -5,11 +5,13 @@ import (
 
 	"agentpermit/internal/model"
 	"agentpermit/internal/policy"
+	"agentpermit/internal/store"
 )
 
 // CatalogItem 是目录页的展示项。
 type CatalogItem struct {
 	Capability       *model.Capability
+	Latest           *model.CapabilityVersion
 	OwnerUsername    string
 	OwnerDisplayName string
 	IsOwner          bool
@@ -64,8 +66,14 @@ func (s *Server) pageCatalog(w http.ResponseWriter, r *http.Request) {
 			continue
 		}
 		if dec.Allowed {
+			latest, err := s.store.GetCapabilityLatestSnapshot(r.Context(), c.ID)
+			if err != nil {
+				s.logger.Error("查询发布版本失败", "err", err, "capability_id", c.ID)
+				continue
+			}
 			items = append(items, &CatalogItem{
 				Capability:       c,
+				Latest:           latest,
 				OwnerUsername:    owner.Username,
 				OwnerDisplayName: owner.DisplayName,
 				IsOwner:          owner.ID == u.ID,
@@ -103,9 +111,15 @@ func (s *Server) pageCatalogDetail(w http.ResponseWriter, r *http.Request) {
 	// 目录展示 latest 发布快照，与 Agent API 看到的内容一致（草稿不外泄）
 	latest, err := s.store.GetCapabilityLatestSnapshot(r.Context(), c.ID)
 	if err != nil {
-		latest = nil
+		if err == store.ErrNotFound {
+			s.renderError(w, r, http.StatusNotFound, "能力尚无可读取的发布版本。")
+		} else {
+			s.logger.Error("查询发布版本失败", "err", err)
+			s.renderError(w, r, http.StatusInternalServerError, "服务暂时不可用。")
+		}
+		return
 	}
-	s.renderPage(w, r, http.StatusOK, "catalog_detail", c.Name, "catalog", map[string]any{
+	s.renderPage(w, r, http.StatusOK, "catalog_detail", latest.Name, "catalog", map[string]any{
 		"Capability":       c,
 		"Latest":           latest,
 		"OwnerUsername":    owner.Username,

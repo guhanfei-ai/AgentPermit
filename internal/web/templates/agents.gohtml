@@ -1,28 +1,30 @@
 {{define "content"}}
 <div class="page-head">
-  <h1>我的 Agent</h1>
+  <h1>我的调用凭证</h1>
 </div>
+<p class="muted">所属账号：{{.User.DisplayName}}（{{.User.Username}}）。你创建并分配凭证给 Agent 使用，访问权限按这个账号判定。</p>
 <div class="card">
-  {{if .Data.Agents}}
+  {{if .Data.Credentials}}
+  <div class="table-scroll">
   <table>
-    <thead><tr><th>名称</th><th>描述</th><th>状态</th><th>Token 提示</th><th>创建时间</th><th>操作</th></tr></thead>
+    <thead><tr><th>用途名称 / 凭证 ID</th><th>用途说明</th><th>状态</th><th>Token 提示</th><th>创建时间</th><th>操作</th></tr></thead>
     <tbody>
-      {{range .Data.Agents}}
+      {{range .Data.Credentials}}
       <tr>
-        <td>{{.Name}}</td>
+        <td>{{.Name}}<br><code class="credential-id" id="credential-{{.ID}}">{{.ID}}</code> <button type="button" class="btn btn-small" data-copy="#credential-{{.ID}}">复制 ID</button></td>
         <td class="muted">{{.Description}}</td>
-        <td>{{if eq .Status "active"}}<span class="badge ok">active</span>{{else}}<span class="badge dead">revoked</span>{{end}}</td>
+        <td>{{if eq .Status "active"}}<span class="badge ok">有效</span>{{else}}<span class="badge dead">已撤销</span>{{end}}</td>
         <td><code>{{.TokenHint}}</code></td>
         <td class="muted">{{fmtTime .CreatedAt}}</td>
         <td class="actions">
           {{if eq .Status "active"}}
-          <form method="post" action="/agents/{{.ID}}/rotate" class="inline-form" data-confirm="轮换后旧 Token 立即失效，确定继续？">
+          <form method="post" action="/agents/{{.ID}}/rotate" class="inline-form" data-confirm="轮换后旧 Token 立即失效，凭证 ID 与已有权限限制保持不变。确定继续？">
             <input type="hidden" name="csrf_token" value="{{$.CSRFToken}}">
             <button type="submit" class="btn btn-small">轮换 Token</button>
           </form>
-          <form method="post" action="/agents/{{.ID}}/revoke" class="inline-form" data-confirm="撤销后该 Agent 的 Token 立即失效且不可恢复，确定继续？">
+          <form method="post" action="/agents/{{.ID}}/revoke" class="inline-form" data-confirm="撤销后这条凭证的 Token 立即失效且不可恢复，账号名下其他凭证不受影响。确定继续？">
             <input type="hidden" name="csrf_token" value="{{$.CSRFToken}}">
-            <button type="submit" class="btn btn-small btn-danger">撤销 Agent</button>
+            <button type="submit" class="btn btn-small btn-danger">撤销凭证</button>
           </form>
           {{else}}
           <span class="muted">已撤销 {{fmtTime .RevokedAt.Time}}</span>
@@ -32,18 +34,19 @@
       {{end}}
     </tbody>
   </table>
+  </div>
   {{else}}
-  <div class="empty">还没有 Agent。Agent 是你的账号授权给自动化程序的身份凭证，创建后凭 Token 访问 Agent API。</div>
+  <div class="empty">还没有调用凭证。创建后把 Token 配置给 Agent，即可按你的账号权限读取能力和参与协作。</div>
   {{end}}
 </div>
 <div class="card">
-  <h2>创建 Agent</h2>
+  <h2>创建调用凭证</h2>
   <form method="post" action="/agents" class="form">
     <input type="hidden" name="csrf_token" value="{{.CSRFToken}}">
-    <label>名称<input type="text" name="name" required maxlength="64"></label>
-    <label>描述<input type="text" name="description" maxlength="500" placeholder="这个 Agent 用来做什么"></label>
+    <label>用途名称<input type="text" name="name" required maxlength="64" placeholder="例如：值班协作、机器查询"></label>
+    <label>用途说明<input type="text" name="description" maxlength="500" placeholder="这条凭证交给哪个程序、用于什么场景"></label>
     <button type="submit" class="btn btn-primary">创建并生成 Token</button>
-    <p class="muted">Token 只在创建成功后展示一次，请立即保存。</p>
+    <p class="muted">Token 只在创建或轮换成功后展示一次。用途名称帮助识别凭证，不证明某个 Agent 运行实例的身份。</p>
   </form>
 </div>
 {{end}}

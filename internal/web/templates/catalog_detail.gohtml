@@ -2,30 +2,39 @@
 {{$c := .Data.Capability}}
 {{$v := .Data.Latest}}
 <div class="page-head">
-  <h1>{{if $v}}{{$v.Name}}{{else}}{{$c.Name}}{{end}}</h1>
+  <h1>{{$v.Name}}</h1>
   <a class="btn" href="/catalog">返回目录</a>
 </div>
 <div class="card">
-  <h2>基本信息 <span class="badge">latest v{{if $v}}{{$v.Version}}{{else}}0{{end}}</span></h2>
+  <h2>基本信息 <span class="badge">latest v{{$v.Version}}</span></h2>
   <table class="kv">
-    <tr><th>描述</th><td>{{if $v}}{{$v.Description}}{{else}}{{$c.Description}}{{end}}</td></tr>
+    <tr><th>描述</th><td>{{$v.Description}}</td></tr>
     <tr><th>提供者</th><td>{{.Data.OwnerDisplayName}}（{{.Data.OwnerUsername}}）{{if .Data.IsOwner}}<span class="badge">你</span>{{end}}</td></tr>
     <tr><th>slug</th><td><code>{{$c.Slug}}</code></td></tr>
-    <tr><th>服务地址</th><td><code>{{if $v}}{{$v.EndpointURL}}{{else}}{{$c.EndpointURL}}{{end}}</code></td></tr>
-    <tr><th>调用方式</th><td><code>{{if $v}}{{$v.HTTPMethod}} {{$v.APIPath}}{{else}}{{$c.HTTPMethod}} {{$c.APIPath}}{{end}}</code></td></tr>
+    {{if $v.HasHTTPBinding}}
+    <tr><th>服务地址</th><td><code>{{$v.EndpointURL}}</code></td></tr>
+    <tr><th>调用方式</th><td><code>{{$v.HTTPMethod}} {{$v.APIPath}}</code></td></tr>
+    {{else}}
+    <tr><th>工具绑定</th><td>纯内容</td></tr>
+    {{end}}
     <tr><th>访问模式</th><td>{{if eq $c.AccessMode "team"}}team（默认团队）{{else}}allowlist（白名单）{{end}}</td></tr>
   </table>
   {{if .Data.IsOwner}}<p class="muted">目录与 Agent API 均展示 latest 发布版本；编辑草稿请到 <a href="/capabilities/{{$c.ID}}/edit">编辑</a> / <a href="/capabilities/{{$c.ID}}/versions">版本管理</a>。</p>{{end}}
 </div>
 <div class="card">
   <h2>能力内容（SPEC / 操作手册 RUNBOOK）</h2>
-  <pre class="spec">{{if $v}}{{$v.SpecMarkdown}}{{else}}{{$c.SpecMarkdown}}{{end}}</pre>
+  <pre class="spec">{{$v.SpecMarkdown}}</pre>
 </div>
 <div class="card">
+  {{if $v.HasHTTPBinding}}
   <h2>HTTP 工具绑定与调用</h2>
-  <p class="muted">用你的 Agent Token 作为 Bearer 凭证直接调用独立服务；独立服务会携带它自己的 Service Token 向平台实时校验你的身份与权限。</p>
+  <p class="muted">用你的 Agent Token 作为 Bearer 凭证直接调用独立服务；独立服务会携带它自己的 Service Token 向平台实时校验调用凭证及其所属账号的权限。</p>
   <pre class="code">curl -H "Authorization: Bearer $AGENTPERMIT_AGENT_TOKEN" \
-  "{{if $v}}{{$v.EndpointURL}}{{$v.APIPath}}{{else}}{{$c.EndpointURL}}{{$c.APIPath}}{{end}}"</pre>
+  "{{$v.EndpointURL}}{{$v.APIPath}}"</pre>
   <p class="muted">认证类型：Bearer，凭证为你的 Agent Token（即 <code>caller_agent_token</code>）。</p>
+  {{else}}
+  <h2>使用方式</h2>
+  <p class="muted">此版本仅提供能力内容，可按 SPEC 与操作手册使用；没有 HTTP 工具绑定，无需配置独立服务或 Service Token。</p>
+  {{end}}
 </div>
 {{end}}

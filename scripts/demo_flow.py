@@ -2,11 +2,11 @@
 """本地演示自动化：所有操作均通过真实 HTTP 与网页表单完成，不绕过任何授权链路。
 
 用法（由 scripts/demo.sh 调用，也可单独使用）：
-  demo_flow.py setup                # 注册三个用户、创建 Agent 与能力、保存凭证
+  demo_flow.py setup                # 注册三个用户、创建调用凭证与能力、保存凭证
   demo_flow.py deny <owner> <user>  # owner 把 user 加入黑名单（网页表单）
   demo_flow.py allow <owner> <user> # owner 把 user 加入白名单
   demo_flow.py mode <owner> <team|allowlist>
-  demo_flow.py revoke-agent <user>  # 撤销该用户的 Agent（网页表单）
+  demo_flow.py revoke-credential <user>  # 撤销该账号的一条调用凭证（网页表单）
   demo_flow.py audit <user>         # 打印该用户可见的审计事件
 
 环境变量：
@@ -96,12 +96,12 @@ def login(username, password):
     return b
 
 
-def create_agent(b, name):
-    """创建 Agent，跟随 303 到一次性展示页提取 Token 与 Agent ID。"""
-    html, url = b.post("/agents", {"name": name, "description": "演示 Agent"})
+def create_credential(b, name):
+    """创建调用凭证，跟随 303 提取 Token 与凭证记录 ID。"""
+    html, url = b.post("/agents", {"name": name, "description": "演示调用凭证"})
     token = TOKEN_RE.search(html)
     if not token:
-        raise RuntimeError("创建 Agent %s 后未能获取一次性 Token" % name)
+        raise RuntimeError("创建凭证 %s 后未能获取一次性 Token" % name)
     agent_id = url.rstrip("/").split("/")[-2]
     return agent_id, token.group(1)
 
@@ -114,7 +114,7 @@ def create_capability(b):
         "endpoint_url": "http://127.0.0.1:9090",
         "http_method": "GET",
         "api_path": "/machines/{machine_id}/spec",
-        "spec_markdown": "## 查询机器配置\n\nGET /machines/{machine_id}/spec\n\nmachine_id 可选 machine-001、machine-002。\n认证：Bearer Agent Token（平台实时校验身份与权限）。",
+        "spec_markdown": "## 查询机器配置\n\nGET /machines/{machine_id}/spec\n\nmachine_id 可选 machine-001、machine-002。\n认证：Bearer Agent Token（平台实时校验凭证归属与账号权限）。",
         "access_mode": "team",
     })
     token = TOKEN_RE.search(html)
@@ -150,18 +150,18 @@ def cmd_setup():
         creds.append(("PASS_%s" % username.upper(), pw))
         print("[setup] 已注册用户 %s（%s）" % (username, display))
 
-    # 2. 张三创建两个 Agent，李四创建一个 Agent
+    # 2. 张三创建两条调用凭证，李四创建一条
     zhang = login("zhangsan", pw)
     for i in (1, 2):
-        agent_id, token = create_agent(zhang, "张三-Agent-%d" % i)
+        agent_id, token = create_credential(zhang, "张三-Agent-%d" % i)
         creds.append(("AGENT_ZHANGSAN_%d" % i, token))
         creds.append(("AGENT_ZHANGSAN_%d_ID" % i, agent_id))
-        print("[setup] 张三创建 Agent: 张三-Agent-%d (%s)" % (i, agent_id))
+        print("[setup] 张三创建凭证: 张三-Agent-%d (%s)" % (i, agent_id))
     lisi = login("lisi", pw)
-    lisi_agent_id, lisi_token = create_agent(lisi, "李四-Agent")
+    lisi_agent_id, lisi_token = create_credential(lisi, "李四-Agent")
     creds.append(("AGENT_LISI", lisi_token))
     creds.append(("AGENT_LISI_ID", lisi_agent_id))
-    print("[setup] 李四创建 Agent: 李四-Agent (%s)" % lisi_agent_id)
+    print("[setup] 李四创建凭证: 李四-Agent (%s)" % lisi_agent_id)
 
     # 3. 王五发布能力并获取一次性展示的 Service Token
     wangwu = login("wangwu", pw)
@@ -219,19 +219,19 @@ def cmd_mode(owner, mode):
     print("[mode] 能力访问模式已切换为 %s" % mode)
 
 
-def cmd_revoke_agent(username):
+def cmd_revoke_credential(username):
     c = load_creds()
     b = login(username, c["DEMO_PASSWORD"])
     agent_id = c["AGENT_LISI_ID"] if username == "lisi" else c["AGENT_ZHANGSAN_1_ID"]
     b.post("/agents/%s/revoke" % agent_id, {})
-    print("[revoke] 已撤销 %s 的 Agent %s" % (username, agent_id))
+    print("[revoke] 已撤销 %s 的调用凭证 %s" % (username, agent_id))
 
 
 def cmd_audit(username):
     c = load_creds()
     b = login(username, c["DEMO_PASSWORD"])
     html, _ = b.get("/audit")
-    events = re.findall(r"<td><code>([a-z_]+)</code></td>", html)
+    events = re.findall(r'data-audit-event="([a-z_]+)"', html)
     print("[audit] %s 可见的审计事件（最近）：" % username)
     for e in events[:20]:
         print("       - %s" % e)
@@ -250,8 +250,8 @@ def main():
         cmd_allow(sys.argv[2], sys.argv[3])
     elif cmd == "mode" and len(sys.argv) == 4:
         cmd_mode(sys.argv[2], sys.argv[3])
-    elif cmd == "revoke-agent" and len(sys.argv) == 3:
-        cmd_revoke_agent(sys.argv[2])
+    elif cmd in ("revoke-credential", "revoke-agent") and len(sys.argv) == 3:
+        cmd_revoke_credential(sys.argv[2])
     elif cmd == "audit" and len(sys.argv) == 3:
         cmd_audit(sys.argv[2])
     else:

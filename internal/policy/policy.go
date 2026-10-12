@@ -3,7 +3,7 @@
 // 任何 Handler 不得自行拼装规则。
 //
 // 授权主体是真人账号（user），不是 Agent：黑名单、白名单均以 user_id 为准，
-// 对某账号生效即覆盖其名下全部 Agent。
+// 对某账号生效即覆盖其名下所有调用凭证访问该能力的请求。
 package policy
 
 import "agentpermit/internal/model"
@@ -18,6 +18,7 @@ const (
 	ReasonCapabilityDisabled = "capability_disabled"
 	ReasonUserBlacklisted    = "user_blacklisted"
 	ReasonUserNotAllowlisted = "user_not_allowlisted"
+	ReasonNoHTTPBinding      = "no_http_binding"
 )
 
 // Basis 是允许时的判定依据（审计用细分，对外 reason 统一为 allowed）。
@@ -29,10 +30,10 @@ const (
 
 // Input 是策略评估所需的全部输入快照（由调用方一次性从数据库读取）。
 type Input struct {
-	// 调用方 Agent；nil 表示 Token 无效。
-	Agent *model.Agent
-	// Agent 所属真人用户；Agent 非 nil 时必须提供。
-	AgentOwner *model.User
+	// 调用凭证记录；nil 表示 Token 无效。
+	Credential *model.AgentCredential
+	// 凭证所属真人账号；Credential 非 nil 时必须提供。
+	CredentialOwner *model.User
 	// 目标能力；nil 由调用方先行处理为 404，不会传入。
 	Capability *model.Capability
 	// 能力所有者。
@@ -53,8 +54,8 @@ type Decision struct {
 }
 
 // Evaluate 按 Agent 调用路径评估，顺序严格固定：
-//  1. Agent 凭证有效且 active；
-//  2. Agent 所属用户 active；
+//  1. 调用凭证有效且 active；
+//  2. 凭证所属账号 active；
 //  3. 能力 active；
 //  4. 能力所有者 active；
 //  5. 调用者是能力所有者 → 允许；
@@ -65,18 +66,30 @@ type Decision struct {
 //
 // 管理员角色不参与能力访问判定。
 func Evaluate(in Input) Decision {
-	// 1. Agent 凭证
-	if in.Agent == nil || in.AgentOwner == nil {
+	// 1. 调用凭证
+	if in.Credential == nil || in.CredentialOwner == nil {
 		return deny(ReasonInvalidAgentToken)
 	}
-	if in.Agent.Status != model.StatusActive {
+	if in.Credential.Status != model.StatusActive {
 		return deny(ReasonAgentRevoked)
 	}
-	// 2. Agent 所属用户
-	if in.AgentOwner.Status != model.StatusActive {
+	// 2. 凭证所属账号
+	if in.CredentialOwner.Status != model.StatusActive {
 		return deny(ReasonUserDisabled)
 	}
-	return evaluateForUser(in.Agent.OwnerUserID, in)
+	return evaluateForUser(in.Credential.OwnerUserID, in)
+}
+
+// EvaluateHTTPService 在账号访问策略通过后检查当前发布版本的工具作用域。
+// 纯内容版本可读取，但不授权独立 HTTP 服务调用；已有访问拒绝优先保留。
+func EvaluateHTTPService(access Decision, published *model.CapabilityVersion) Decision {
+	if !access.Allowed {
+		return access
+	}
+	if !published.HasHTTPBinding() {
+		return deny(ReasonNoHTTPBinding)
+	}
+	return access
 }
 
 // EvaluateForUser 按“已登录真人用户”路径评估（Web 能力目录页使用）。

@@ -1,6 +1,6 @@
 {{define "content"}}
 <h1>能力目录</h1>
-<p class="muted">以下是当前账号（含其所有 Agent）有权访问的能力。能力所有者自己的能力也会出现在这里。</p>
+<p class="muted">以下是当前账号有权访问的能力。账号名下的有效调用凭证沿用这些访问权限；能力所有者自己的能力也会出现在这里。</p>
 <div class="card">
   {{if .Data.Catalog}}
   <table>
@@ -8,11 +8,11 @@
     <tbody>
       {{range .Data.Catalog}}
       <tr>
-        <td>{{.Capability.Name}}</td>
+        <td>{{.Latest.Name}} <span class="badge">v{{.Latest.Version}}</span><div class="muted">{{.Latest.Description}}</div></td>
         <td>{{.OwnerDisplayName}}（{{.OwnerUsername}}）{{if .IsOwner}}<span class="badge">所有者</span>{{end}}</td>
         <td>{{if eq .Capability.AccessMode "team"}}团队{{else}}白名单{{end}}</td>
-        <td class="muted">{{.Capability.EndpointURL}}</td>
-        <td><code>{{.Capability.HTTPMethod}} {{.Capability.APIPath}}</code></td>
+        <td class="muted">{{if .Latest.HasHTTPBinding}}{{.Latest.EndpointURL}}{{else}}纯内容{{end}}</td>
+        <td>{{if .Latest.HasHTTPBinding}}<code>{{.Latest.HTTPMethod}} {{.Latest.APIPath}}</code>{{else}}—{{end}}</td>
         <td><a class="btn btn-small" href="/catalog/{{.Capability.ID}}">详情</a></td>
       </tr>
       {{end}}

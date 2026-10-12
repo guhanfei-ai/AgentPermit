@@ -18,8 +18,8 @@ func TestLegacyPrefixTokensStillValid(t *testing.T) {
 
 	// 用旧前缀生成 Agent Token（模拟更名前签发的存量凭证）
 	legacyAgentToken, legacyHash, legacyHint := auth.NewToken(auth.LegacyAgentTokenPrefix)
-	agent := mustSeedAgent(e, zhangsan.ID, "存量-Agent", legacyHash, legacyHint)
-	_ = agent
+	credential := mustSeedCredential(e, zhangsan.ID, "存量-Agent", legacyHash, legacyHint)
+	_ = credential
 
 	c := newHTTPClient(t, e.ts.URL)
 	resp, _ := c.apiGet("/api/v1/agent/me", legacyAgentToken)

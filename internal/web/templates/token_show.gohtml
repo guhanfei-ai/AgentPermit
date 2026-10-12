@@ -1,7 +1,7 @@
 {{define "content"}}
 <div class="card">
-  <h1>Agent Token 一次性展示</h1>
-  <p>Agent「{{.Data.AgentName}}」的 Token 如下。这是唯一一次展示，离开本页后将无法再次查看，请立即保存。</p>
+  <h1>调用凭证一次性展示</h1>
+  <p>凭证「{{.Data.CredentialName}}」属于 {{.User.DisplayName}}（{{.User.Username}}），ID 为 <code>{{.Data.CredentialID}}</code>。将下面的 Agent Token 配置给需要使用它的程序；离开本页后将无法再次查看，请立即保存。</p>
   <div class="token-box"><code id="secret-token">{{.Data.Token}}</code>
     <button type="button" class="btn btn-small" data-copy="#secret-token">复制</button>
   </div>
@@ -9,7 +9,7 @@
   <pre class="code" id="export-block">export AGENTPERMIT_BASE_URL="{{.Data.BaseURL}}"
 export AGENTPERMIT_AGENT_TOKEN="{{.Data.Token}}"</pre>
   <button type="button" class="btn btn-small" data-copy="#export-block">复制配置</button>
-  <p class="warn">安全提示：不要把 Token 提交到代码仓库或粘贴到不可信的地方。轮换或撤销 Agent 会立即使其失效。</p>
-  <p><a class="btn" href="/agents">返回我的 Agent</a></p>
+  <p class="warn">不要把 Token 提交到代码仓库或粘贴到不可信的地方。轮换后旧 Token 失效，凭证 ID 和已有限制保持不变；撤销只影响这条凭证。</p>
+  <p><a class="btn" href="/agents">返回我的调用凭证</a></p>
 </div>
 {{end}}

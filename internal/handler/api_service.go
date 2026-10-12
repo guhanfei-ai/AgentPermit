@@ -18,7 +18,7 @@ type authorizeRequest struct {
 	CapabilityID string `json:"capability_id"` // 可选；若提供必须与 Service Token 绑定的能力一致
 }
 
-type authorizeAgentInfo struct {
+type authorizeCredentialInfo struct {
 	ID   string `json:"id"`
 	Name string `json:"name"`
 }
@@ -30,11 +30,11 @@ type authorizeUserInfo struct {
 }
 
 type authorizeResponse struct {
-	Allowed      bool                `json:"allowed"`
-	Reason       string              `json:"reason"`
-	CapabilityID string              `json:"capability_id"`
-	Agent        *authorizeAgentInfo `json:"agent,omitempty"`
-	User         *authorizeUserInfo  `json:"user,omitempty"`
+	Allowed      bool                     `json:"allowed"`
+	Reason       string                   `json:"reason"`
+	CapabilityID string                   `json:"capability_id"`
+	Credential   *authorizeCredentialInfo `json:"agent,omitempty"`
+	User         *authorizeUserInfo       `json:"user,omitempty"`
 }
 
 // apiServiceAuthorize 是独立服务使用的授权校验接口。
@@ -78,13 +78,13 @@ func (s *Server) apiServiceAuthorize(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	agent, err := s.store.GetAgentByTokenHash(r.Context(), auth.HashToken(req.AgentToken))
+	credential, err := s.store.GetAgentCredentialByTokenHash(r.Context(), auth.HashToken(req.AgentToken))
 	if err != nil {
 		// 无效 Agent Token：不返回任何推测的用户身份
 		s.writeAuthorizeDecision(w, r, cred.CapabilityID, policy.Decision{Allowed: false, Reason: policy.ReasonInvalidAgentToken}, nil, nil)
 		return
 	}
-	owner, err := s.store.GetUserByID(r.Context(), agent.OwnerUserID)
+	owner, err := s.store.GetUserByID(r.Context(), credential.OwnerUserID)
 	if err != nil {
 		s.writeAuthorizeDecision(w, r, cred.CapabilityID, policy.Decision{Allowed: false, Reason: policy.ReasonInvalidAgentToken}, nil, nil)
 		return
@@ -97,17 +97,26 @@ func (s *Server) apiServiceAuthorize(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	dec, err := s.evaluateForAgent(r, agent, owner, capability)
+	dec, err := s.evaluateForCredential(r, credential, owner, capability)
 	if err != nil {
 		s.logger.Error("授权评估失败", "err", err)
 		s.jsonError(w, r, http.StatusInternalServerError, "internal", "服务器内部错误")
 		return
 	}
-	s.writeAuthorizeDecision(w, r, cred.CapabilityID, dec, agent, owner)
+	if dec.Allowed {
+		latest, err := s.store.GetCapabilityLatestSnapshot(r.Context(), capability.ID)
+		if err != nil {
+			s.logger.Error("授权时查询发布版本失败", "err", err)
+			s.jsonError(w, r, http.StatusInternalServerError, "internal", "服务器内部错误")
+			return
+		}
+		dec = policy.EvaluateHTTPService(dec, latest)
+	}
+	s.writeAuthorizeDecision(w, r, cred.CapabilityID, dec, credential, owner)
 }
 
 // writeAuthorizeDecision 输出决策并写审计。响应不包含任何 Token 原文或摘要。
-func (s *Server) writeAuthorizeDecision(w http.ResponseWriter, r *http.Request, capabilityID string, dec policy.Decision, agent *model.Agent, owner *model.User) {
+func (s *Server) writeAuthorizeDecision(w http.ResponseWriter, r *http.Request, capabilityID string, dec policy.Decision, credential *model.AgentCredential, owner *model.User) {
 	event := "authorize_denied"
 	outcome := "failure"
 	if dec.Allowed {
@@ -120,8 +129,8 @@ func (s *Server) writeAuthorizeDecision(w http.ResponseWriter, r *http.Request, 
 		Outcome:      outcome,
 		Reason:       dec.Reason,
 	}
-	if agent != nil {
-		entry.AgentID = agent.ID
+	if credential != nil {
+		entry.CredentialID = credential.ID
 	}
 	if owner != nil {
 		entry.SubjectUserID = owner.ID
@@ -134,8 +143,8 @@ func (s *Server) writeAuthorizeDecision(w http.ResponseWriter, r *http.Request, 
 		CapabilityID: capabilityID,
 	}
 	// 仅在允许时返回调用者身份信息；拒绝时只返回必要信息
-	if dec.Allowed && agent != nil && owner != nil {
-		resp.Agent = &authorizeAgentInfo{ID: agent.ID, Name: agent.Name}
+	if dec.Allowed && credential != nil && owner != nil {
+		resp.Credential = &authorizeCredentialInfo{ID: credential.ID, Name: credential.Name}
 		resp.User = &authorizeUserInfo{ID: owner.ID, Username: owner.Username, DisplayName: owner.DisplayName}
 	}
 	writeJSON(w, r, http.StatusOK, resp)

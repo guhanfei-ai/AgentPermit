@@ -2,6 +2,21 @@
 (function () {
   "use strict";
 
+  // 先选禁言范围；账号级提交不携带凭证，单凭证范围要求明确选择。
+  document.querySelectorAll("[data-ban-form]").forEach(function (form) {
+    var scope = form.querySelector("[data-ban-scope]");
+    var choice = form.querySelector("[data-credential-choice]");
+    var credential = form.querySelector("[data-ban-credential]");
+    var update = function () {
+      var single = scope.value === "credential";
+      choice.hidden = !single;
+      credential.disabled = !single;
+      credential.required = single;
+    };
+    scope.addEventListener("change", update);
+    update();
+  });
+
   // 表单危险操作确认
   document.addEventListener("submit", function (e) {
     var form = e.target;

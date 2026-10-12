@@ -112,7 +112,7 @@ func (s *Service) machineSpec(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	if !decision.Allowed {
-		// 凭证无效/撤销 → 401；身份有效但无权限 → 403
+		// 凭证无效/撤销 → 401；凭证有效但账号无访问权限 → 403
 		if decision.Reason == "invalid_agent_token" || decision.Reason == "agent_revoked" {
 			writeErr(http.StatusUnauthorized, "unauthorized", "Agent Token 无效或已撤销")
 			return

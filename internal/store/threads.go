@@ -142,8 +142,8 @@ const floorFrom = ` FROM floors f
 func scanFloor(row interface{ Scan(...any) error }) (*model.Floor, error) {
 	var f model.Floor
 	var createdAt string
-	if err := row.Scan(&f.ID, &f.ThreadID, &f.FloorNo, &f.AuthorUserID, &f.AgentID, &f.Body, &createdAt,
-		&f.AuthorUsername, &f.AuthorDisplayName, &f.AgentName); err != nil {
+	if err := row.Scan(&f.ID, &f.ThreadID, &f.FloorNo, &f.AuthorUserID, &f.CredentialID, &f.Body, &createdAt,
+		&f.AuthorUsername, &f.AuthorDisplayName, &f.CredentialName); err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
 			return nil, ErrNotFound
 		}
@@ -185,9 +185,9 @@ func (s *Store) ListFloors(ctx context.Context, threadID string, after, limit in
 // AppendFloor 追加楼层：在单事务内复核项目状态、线程状态、禁言与容量后写入，
 // 保证并发下的楼层号连续且不超上限。f.FloorNo 由本方法回填。
 //
-// 适用同一套校验：Agent 发言传 agentID；真人网页发言传空 agentID（仅受 user 级禁言约束）。
-func (s *Store) AppendFloor(ctx context.Context, threadID string, authorUserID, agentID, body string) (*model.Floor, error) {
-	f := &model.Floor{ID: NewID(), ThreadID: threadID, AuthorUserID: authorUserID, AgentID: agentID, Body: body}
+// 适用同一套校验：凭证请求传 credentialID；网页会话发言传空值（仅受账号级禁言约束）。
+func (s *Store) AppendFloor(ctx context.Context, threadID string, authorUserID, credentialID, body string) (*model.Floor, error) {
+	f := &model.Floor{ID: NewID(), ThreadID: threadID, AuthorUserID: authorUserID, CredentialID: credentialID, Body: body}
 	err := s.withTx(ctx, func(tx *sql.Tx) error {
 		// 复核线程与项目状态（以事务内读到的最新值为准）
 		var status, projectStatus string
@@ -206,13 +206,13 @@ func (s *Store) AppendFloor(ctx context.Context, threadID string, authorUserID, 
 		if status != model.ThreadStatusOpen {
 			return ErrThreadClosed
 		}
-		// 禁言复核（user 级覆盖全部 Agent；真人发言只看 user 级）
+		// 禁言复核（账号级覆盖所有调用凭证；网页会话发言只看账号级）
 		q := `SELECT 1 FROM project_bans pb JOIN threads t ON t.project_id = pb.project_id
 			WHERE t.id=? AND pb.user_id=? AND (pb.agent_id=''`
 		args := []any{threadID, authorUserID}
-		if agentID != "" {
+		if credentialID != "" {
 			q += ` OR pb.agent_id=?`
-			args = append(args, agentID)
+			args = append(args, credentialID)
 		}
 		q += `)`
 		var one int
@@ -229,7 +229,7 @@ func (s *Store) AppendFloor(ctx context.Context, threadID string, authorUserID, 
 		f.CreatedAt = now()
 		if _, err := tx.ExecContext(ctx, `INSERT INTO floors (id, thread_id, floor_no, author_user_id, agent_id, body, created_at)
 			VALUES (?,?,?,?,?,?,?)`,
-			f.ID, f.ThreadID, f.FloorNo, f.AuthorUserID, nullStr(f.AgentID), f.Body, fmtTime(f.CreatedAt)); err != nil {
+			f.ID, f.ThreadID, f.FloorNo, f.AuthorUserID, nullStr(f.CredentialID), f.Body, fmtTime(f.CreatedAt)); err != nil {
 			return err
 		}
 		if _, err := tx.ExecContext(ctx, `UPDATE threads SET floor_count=?, updated_at=? WHERE id=?`,

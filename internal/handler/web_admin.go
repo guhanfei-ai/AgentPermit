@@ -20,11 +20,11 @@ func (s *Server) pageAdminUsers(w http.ResponseWriter, r *http.Request) {
 }
 
 func (s *Server) pageAdminDisable(w http.ResponseWriter, r *http.Request) {
-	s.setAdminUserStatus(w, r, model.StatusDisabled, "user_disabled", "用户已禁用，其全部会话与 Agent Token 立即失效。")
+	s.setAdminUserStatus(w, r, model.StatusDisabled, "user_disabled", "账号已禁用，网页会话已撤销，名下调用凭证暂停访问；凭证未被永久撤销。")
 }
 
 func (s *Server) pageAdminEnable(w http.ResponseWriter, r *http.Request) {
-	s.setAdminUserStatus(w, r, model.StatusActive, "user_enabled", "用户已启用。")
+	s.setAdminUserStatus(w, r, model.StatusActive, "user_enabled", "账号已启用，仍有效的调用凭证恢复可用；网页登录需重新登录。")
 }
 
 func (s *Server) setAdminUserStatus(w http.ResponseWriter, r *http.Request, status, event, msg string) {
@@ -46,7 +46,7 @@ func (s *Server) setAdminUserStatus(w http.ResponseWriter, r *http.Request, stat
 		return
 	}
 	if status == model.StatusDisabled {
-		// 禁用后撤销全部现有会话；Agent Token 由策略层实时判定失效
+		// 禁用后撤销全部现有会话；调用凭证由策略层实时拒绝，重新启用不复活已撤销的凭证
 		if err := s.store.RevokeSessionsForUser(r.Context(), targetID); err != nil {
 			s.logger.Error("撤销会话失败", "err", err)
 		}

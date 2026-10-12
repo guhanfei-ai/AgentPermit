@@ -156,22 +156,22 @@ func (s *Store) RemoveProjectAdmin(ctx context.Context, projectID, userID string
 	return err
 }
 
-// AddProjectBan 添加禁言。agentID 为空 = user 级（覆盖该真人全部 Agent）。
+// AddProjectBan 添加禁言。credentialID 为空为账号级（覆盖其所有调用凭证与本人网页发言）。
 func (s *Store) AddProjectBan(ctx context.Context, b *model.ProjectBan) error {
 	b.CreatedAt = now()
 	_, err := s.db.ExecContext(ctx, `INSERT INTO project_bans (project_id, user_id, agent_id, reason, banned_by, created_at)
 		VALUES (?,?,?,?,?,?)`,
-		b.ProjectID, b.UserID, b.AgentID, b.Reason, b.BannedBy, fmtTime(b.CreatedAt))
+		b.ProjectID, b.UserID, b.CredentialID, b.Reason, b.BannedBy, fmtTime(b.CreatedAt))
 	if isUniqueViolation(err) {
 		return ErrConflict
 	}
 	return err
 }
 
-// RemoveProjectBan 解除禁言（user 级传 agentID 空串）。
-func (s *Store) RemoveProjectBan(ctx context.Context, projectID, userID, agentID string) error {
+// RemoveProjectBan 解除禁言（账号级传 credentialID 空串）。
+func (s *Store) RemoveProjectBan(ctx context.Context, projectID, userID, credentialID string) error {
 	res, err := s.db.ExecContext(ctx, `DELETE FROM project_bans WHERE project_id=? AND user_id=? AND agent_id=?`,
-		projectID, userID, agentID)
+		projectID, userID, credentialID)
 	if err != nil {
 		return err
 	}
@@ -189,8 +189,8 @@ func scanBan(row interface{ Scan(...any) error }) (*model.ProjectBan, error) {
 	var b model.ProjectBan
 	var createdAt string
 	var bannedBy sql.NullString
-	if err := row.Scan(&b.ProjectID, &b.UserID, &b.AgentID, &b.Reason, &bannedBy, &createdAt,
-		&b.Username, &b.DisplayName, &b.AgentName, &b.BannedByUsername); err != nil {
+	if err := row.Scan(&b.ProjectID, &b.UserID, &b.CredentialID, &b.Reason, &bannedBy, &createdAt,
+		&b.Username, &b.DisplayName, &b.CredentialName, &b.BannedByUsername); err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
 			return nil, ErrNotFound
 		}
@@ -204,7 +204,7 @@ func scanBan(row interface{ Scan(...any) error }) (*model.ProjectBan, error) {
 	return &b, nil
 }
 
-// ListProjectBans 列出项目禁言条目（联查用户与 Agent 名）。
+// ListProjectBans 列出项目禁言条目（联查账号与凭证名称）。
 func (s *Store) ListProjectBans(ctx context.Context, projectID string) ([]*model.ProjectBan, error) {
 	rows, err := s.db.QueryContext(ctx, `SELECT `+banColumns+` FROM project_bans b
 		LEFT JOIN users u ON u.id = b.user_id
@@ -226,14 +226,14 @@ func (s *Store) ListProjectBans(ctx context.Context, projectID string) ([]*model
 	return out, rows.Err()
 }
 
-// IsProjectBanned 判断发言资格：agentID 为空（真人网页发言）只查 user 级禁言；
-// agentID 非空时 user 级或 agent 级任一命中即禁言。
-func (s *Store) IsProjectBanned(ctx context.Context, projectID, userID, agentID string) (bool, error) {
+// IsProjectBanned 判断发言资格：credentialID 为空（网页会话发言）只查账号级禁言；
+// credentialID 非空时账号级或单凭证限制任一命中即禁言。
+func (s *Store) IsProjectBanned(ctx context.Context, projectID, userID, credentialID string) (bool, error) {
 	q := `SELECT 1 FROM project_bans WHERE project_id=? AND user_id=? AND agent_id=''`
 	args := []any{projectID, userID}
-	if agentID != "" {
+	if credentialID != "" {
 		q += ` OR (project_id=? AND user_id=? AND agent_id=?)`
-		args = append(args, projectID, userID, agentID)
+		args = append(args, projectID, userID, credentialID)
 	}
 	var one int
 	err := s.db.QueryRowContext(ctx, q, args...).Scan(&one)

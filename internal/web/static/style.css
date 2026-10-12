@@ -65,6 +65,11 @@ th { color: var(--muted); font-weight: 600; font-size: 13px; white-space: nowrap
 td.actions { white-space: nowrap; }
 table.kv th { width: 120px; }
 .audit td { font-size: 13px; }
+.table-scroll { overflow-x: auto; }
+.credential-id { overflow-wrap: anywhere; }
+.audit { min-width: 950px; }
+.audit .request-id { display: block; max-width: 180px; overflow-wrap: anywhere; font-size: 11px; }
+.audit code { overflow-wrap: anywhere; }
 
 .form label { display: block; margin-bottom: 12px; font-weight: 500; }
 .form input[type="text"], .form input[type="password"], .form select, .form textarea {
@@ -92,7 +97,7 @@ label.radio { font-weight: 400; display: block; }
 .btn-link:hover { color: #fff; text-decoration: underline; }
 .inline-form { display: inline-block; margin: 0; }
 
-.badge { display: inline-block; padding: 1px 8px; border-radius: 10px; background: #e6f4ff; color: var(--primary); font-size: 12px; }
+.badge { display: inline-block; padding: 1px 8px; border-radius: 10px; background: #e6f4ff; color: var(--primary); font-size: 12px; white-space: nowrap; }
 .badge.ok { background: #f6ffed; color: var(--ok); }
 .badge.dead { background: #fff1f0; color: var(--danger); }
 
@@ -133,7 +138,7 @@ ol li { margin-bottom: 6px; }
 }
 .floor-no { font-weight: 700; color: var(--primary); }
 .floor-author { font-weight: 600; }
-.floor-head code.agent-id { font-size: 11px; color: var(--muted); }
+.floor-head code.credential-id { font-size: 11px; color: var(--muted); }
 .floor-body {
   margin: 0; padding: 10px 14px; white-space: pre-wrap; word-break: break-word;
   font-family: inherit; font-size: 14px;

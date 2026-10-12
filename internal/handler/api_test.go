@@ -16,10 +16,10 @@ func newTestToken(prefix string) (raw, hash, hint string) {
 }
 
 // Agent /me 正常返回且不泄露内部字段
-func TestAgentMe(t *testing.T) {
+func TestCredentialMe(t *testing.T) {
 	e := newTestEnv(t)
 	u := e.seedUser("gina", "吉娜")
-	_, token := e.seedAgent(u, "gina-agent")
+	_, token := e.seedCredential(u, "gina-agent")
 
 	resp, body := newHTTPClient(t, e.ts.URL).apiGet("/api/v1/agent/me", token)
 	if resp.StatusCode != 200 {
@@ -71,7 +71,7 @@ func TestServiceTokenCannotActAsAgent(t *testing.T) {
 func TestAgentTokenCannotCallAuthorize(t *testing.T) {
 	e := newTestEnv(t)
 	u := e.seedUser("ivan", "伊万")
-	_, agentToken := e.seedAgent(u, "ivan-agent")
+	_, agentToken := e.seedCredential(u, "ivan-agent")
 
 	c := newHTTPClient(t, e.ts.URL)
 	req, _ := http.NewRequest(http.MethodPost, e.ts.URL+"/api/v1/service/authorize", strings.NewReader(`{"agent_token":"x"}`))
@@ -92,7 +92,7 @@ func TestCapabilityListFilterAndDetail404(t *testing.T) {
 	wangwu := e.seedUser("wangwu", "王五")
 	zhangsan := e.seedUser("zhangsan", "张三")
 	capability, _ := e.seedCapability(wangwu, "filter-cap")
-	_, zhangsanToken := e.seedAgent(zhangsan, "z-agent")
+	_, zhangsanToken := e.seedCredential(zhangsan, "z-agent")
 
 	// team 模式下可见
 	_, body := newHTTPClient(t, e.ts.URL).apiGet("/api/v1/capabilities", zhangsanToken)
@@ -124,10 +124,10 @@ func TestCapabilityListFilterAndDetail404(t *testing.T) {
 func TestAgentTokenRotation(t *testing.T) {
 	e := newTestEnv(t)
 	u := e.seedUser("jack", "杰克")
-	agent, oldToken := e.seedAgent(u, "jack-agent")
+	credential, oldToken := e.seedCredential(u, "jack-agent")
 
 	newRaw, newHash, newHint := newTestToken(auth.AgentTokenPrefix)
-	if err := e.st.RotateAgentToken(e.ctx, agent.ID, u.ID, newHash, newHint); err != nil {
+	if err := e.st.RotateAgentCredentialToken(e.ctx, credential.ID, u.ID, newHash, newHint); err != nil {
 		t.Fatal(err)
 	}
 	resp, _ := newHTTPClient(t, e.ts.URL).apiGet("/api/v1/agent/me", oldToken)
@@ -141,11 +141,11 @@ func TestAgentTokenRotation(t *testing.T) {
 }
 
 // 12. Agent 撤销后旧 Token 失效
-func TestAgentRevocation(t *testing.T) {
+func TestCredentialRevocation(t *testing.T) {
 	e := newTestEnv(t)
 	u := e.seedUser("kate", "凯特")
-	agent, token := e.seedAgent(u, "kate-agent")
-	if err := e.st.RevokeAgent(e.ctx, agent.ID, u.ID); err != nil {
+	credential, token := e.seedCredential(u, "kate-agent")
+	if err := e.st.RevokeAgentCredential(e.ctx, credential.ID, u.ID); err != nil {
 		t.Fatal(err)
 	}
 	resp, _ := newHTTPClient(t, e.ts.URL).apiGet("/api/v1/agent/me", token)
@@ -161,7 +161,7 @@ func TestServiceTokenRotationAndScoping(t *testing.T) {
 	caller := e.seedUser("mia", "米娅")
 	capA, svcA := e.seedCapability(owner, "cap-a")
 	capB, svcB := e.seedCapability(owner, "cap-b")
-	_, agentToken := e.seedAgent(caller, "mia-agent")
+	_, agentToken := e.seedCredential(caller, "mia-agent")
 
 	// A、B 均可授权
 	if code, out := e.authorize(svcA, agentToken); code != 200 || out["allowed"] != true {
@@ -199,15 +199,15 @@ func TestServiceTokenRotationAndScoping(t *testing.T) {
 }
 
 // 15. 黑名单对该用户的两个 Agent 同时生效（按真人账号授权主体）
-func TestDenylistCoversAllAgentsOfUser(t *testing.T) {
+func TestDenylistCoversAllCredentialsOfUser(t *testing.T) {
 	e := newTestEnv(t)
 	wangwu := e.seedUser("wangwu", "王五")
 	zhangsan := e.seedUser("zhangsan", "张三")
 	lisi := e.seedUser("lisi", "李四")
 	capability, svcToken := e.seedCapability(wangwu, "multi-cap")
-	_, token1 := e.seedAgent(zhangsan, "张三-Agent-1")
-	_, token2 := e.seedAgent(zhangsan, "张三-Agent-2")
-	_, lisiToken := e.seedAgent(lisi, "李四-Agent")
+	_, token1 := e.seedCredential(zhangsan, "张三-Agent-1")
+	_, token2 := e.seedCredential(zhangsan, "张三-Agent-2")
+	_, lisiToken := e.seedCredential(lisi, "李四-Agent")
 
 	// 拉黑前：张三两个 Agent、李四 Agent 都允许
 	for _, tk := range []string{token1, token2, lisiToken} {
@@ -236,13 +236,13 @@ func TestDenylistCoversAllAgentsOfUser(t *testing.T) {
 func TestTokensNotStoredInPlaintext(t *testing.T) {
 	e := newTestEnv(t)
 	u := e.seedUser("nina", "妮娜")
-	agent, agentToken := e.seedAgent(u, "nina-agent")
+	credential, agentToken := e.seedCredential(u, "nina-agent")
 	capability, svcToken := e.seedCapability(u, "nina-cap")
 
-	if agent.TokenHash == agentToken || agent.TokenHint == agentToken {
+	if credential.TokenHash == agentToken || credential.TokenHint == agentToken {
 		t.Fatalf("Agent Token 原文不得入库")
 	}
-	if strings.Contains(agent.TokenHash, "aad_agent_") {
+	if strings.Contains(credential.TokenHash, "aad_agent_") {
 		t.Fatalf("Token 摘要不应包含原文前缀")
 	}
 	cred, err := e.st.GetServiceCredentialByCapability(e.ctx, capability.ID)
@@ -277,12 +277,12 @@ func TestTokensNotStoredInPlaintext(t *testing.T) {
 }
 
 // 用户被禁用后其 Agent Token 立即失效（含 API 401 与授权拒绝）
-func TestDisabledUserAgentsInvalid(t *testing.T) {
+func TestDisabledUserCredentialsInvalid(t *testing.T) {
 	e := newTestEnv(t)
 	wangwu := e.seedUser("wangwu", "王五")
 	zhangsan := e.seedUser("zhangsan", "张三")
 	_, svcToken := e.seedCapability(wangwu, "disable-cap")
-	_, agentToken := e.seedAgent(zhangsan, "z-agent")
+	_, agentToken := e.seedCredential(zhangsan, "z-agent")
 
 	// 禁用张三
 	if err := e.st.SetUserStatus(e.ctx, zhangsan.ID, model.StatusDisabled); err != nil {
@@ -303,7 +303,7 @@ func TestDisabledCapabilityBlocksAll(t *testing.T) {
 	e := newTestEnv(t)
 	wangwu := e.seedUser("wangwu", "王五")
 	capability, svcToken := e.seedCapability(wangwu, "off-cap")
-	_, ownerToken := e.seedAgent(wangwu, "owner-agent")
+	_, ownerToken := e.seedCredential(wangwu, "owner-agent")
 
 	// 停用能力
 	if err := e.st.SetCapabilityStatus(e.ctx, capability.ID, wangwu.ID, model.StatusDisabled); err != nil {
@@ -327,9 +327,9 @@ func TestAllowlistModeScoping(t *testing.T) {
 	zhangsan := e.seedUser("zhangsan", "张三")
 	lisi := e.seedUser("lisi", "李四")
 	capability, svcToken := e.seedCapability(wangwu, "allow-cap")
-	_, zToken := e.seedAgent(zhangsan, "z-agent")
-	_, lToken := e.seedAgent(lisi, "l-agent")
-	_, ownerToken := e.seedAgent(wangwu, "w-agent")
+	_, zToken := e.seedCredential(zhangsan, "z-agent")
+	_, lToken := e.seedCredential(lisi, "l-agent")
+	_, ownerToken := e.seedCredential(wangwu, "w-agent")
 
 	// 切白名单模式，仅加李四
 	if err := e.st.SetAccessMode(e.ctx, capability.ID, wangwu.ID, model.AccessModeAllowlist); err != nil {
@@ -383,7 +383,7 @@ func TestAdminAgentNoBypass(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	_, adminToken := e.seedAgent(admin, "admin-agent")
+	_, adminToken := e.seedCredential(admin, "admin-agent")
 
 	// 切白名单模式，管理员不在白名单
 	if err := e.st.SetAccessMode(e.ctx, capability.ID, wangwu.ID, model.AccessModeAllowlist); err != nil {

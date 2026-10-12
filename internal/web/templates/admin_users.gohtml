@@ -17,7 +17,7 @@
           {{if $isSelf}}
           <span class="muted">当前登录账号</span>
           {{else if eq .Status "active"}}
-          <form method="post" action="/admin/users/{{.ID}}/disable" class="inline-form" data-confirm="禁用后该用户所有会话与名下全部 Agent Token 立即失效，确定？">
+          <form method="post" action="/admin/users/{{.ID}}/disable" class="inline-form" data-confirm="禁用后该账号的网页会话撤销，所有调用凭证暂停访问；重新启用后仍有效的凭证恢复可用。确定？">
             <input type="hidden" name="csrf_token" value="{{$.CSRFToken}}">
             <button type="submit" class="btn btn-small btn-danger">禁用</button>
           </form>

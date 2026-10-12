@@ -75,7 +75,7 @@ func TestCSRFRequired(t *testing.T) {
 	_ = u
 }
 
-// 3. 未登录不能管理 Agent 和能力
+// 3. 未登录不能管理调用凭证和能力
 func TestAnonymousCannotManage(t *testing.T) {
 	e := newTestEnv(t)
 	c := newHTTPClient(t, e.ts.URL)
@@ -96,18 +96,18 @@ func TestOwnershipEnforced(t *testing.T) {
 	e := newTestEnv(t)
 	owner := e.seedUser("dave", "戴夫")
 	other := e.seedUser("erin", "艾琳")
-	agent, _ := e.seedAgent(owner, "owner-agent")
+	credential, _ := e.seedCredential(owner, "owner-agent")
 	capability, _ := e.seedCapability(owner, "dave-cap")
 
 	c := newHTTPClient(t, e.ts.URL)
 	c.loginViaWeb("erin", testPassword)
 
 	// 他人撤销 owner 的 Agent → 404，且 Agent 仍 active
-	resp, _ := c.postForm("/agents/"+agent.ID+"/revoke", url.Values{})
+	resp, _ := c.postForm("/agents/"+credential.ID+"/revoke", url.Values{})
 	if resp.StatusCode != http.StatusNotFound {
-		t.Fatalf("他人撤销 Agent 应 404，得到 %d", resp.StatusCode)
+		t.Fatalf("他人撤销凭证应 404，得到 %d", resp.StatusCode)
 	}
-	got, err := e.st.GetAgentByID(e.ctx, agent.ID)
+	got, err := e.st.GetAgentCredentialByID(e.ctx, credential.ID)
 	if err != nil || got.Status != "active" {
 		t.Fatalf("Agent 不应被他人撤销")
 	}
@@ -132,7 +132,7 @@ func TestOwnershipEnforced(t *testing.T) {
 func TestAgentTokenCannotAccessWeb(t *testing.T) {
 	e := newTestEnv(t)
 	u := e.seedUser("frank", "弗兰克")
-	_, agentToken := e.seedAgent(u, "web-try")
+	_, agentToken := e.seedCredential(u, "web-try")
 	c := newHTTPClient(t, e.ts.URL)
 
 	// 带 Agent Token 访问管理页面：仍按匿名处理 → 跳转登录
@@ -149,7 +149,7 @@ func TestAuditIsolation(t *testing.T) {
 	zhangsan := e.seedUser("zhangsan", "张三")
 	_ = zhangsan
 	capability, svcToken := e.seedCapability(wangwu, "audit-cap")
-	_, agentToken := e.seedAgent(wangwu, "owner-agent")
+	_, agentToken := e.seedCredential(wangwu, "owner-agent")
 	_ = capability
 	// 触发一条授权事件
 	code, out := e.authorize(svcToken, agentToken)

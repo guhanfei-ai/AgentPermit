@@ -1,4 +1,4 @@
-// Package model 定义平台的数据结构。字段名与数据库列一一对应。
+// Package model 定义平台的数据结构。兼容列名在 store 层显式映射。
 package model
 
 import "time"
@@ -55,8 +55,9 @@ type Session struct {
 	RevokedAt *time.Time
 }
 
-// Agent 归属于某个真人用户的 Agent 身份。
-type Agent struct {
+// AgentCredential 真人账号名下供 Agent 使用的凭证记录，不表示运行中的 Agent 实例。
+// 同一记录只有一个当前 Token；轮换不改变记录 ID、账号归属或限制。
+type AgentCredential struct {
 	ID          string
 	OwnerUserID string
 	Name        string
@@ -68,8 +69,8 @@ type Agent struct {
 	RevokedAt   *time.Time
 }
 
-// IsActive 报告 Agent 是否有效。
-func (a *Agent) IsActive() bool { return a != nil && a.Status == StatusActive }
+// IsActive 报告凭证记录是否未撤销；账号状态仍需独立校验。
+func (a *AgentCredential) IsActive() bool { return a != nil && a.Status == StatusActive }
 
 // Capability 用户维护的团队能力，包含内容与 HTTP 工具绑定。
 // 可编辑字段构成内容「草稿」；对外只暴露 latest_version 指向的已发布快照。
@@ -90,6 +91,11 @@ type Capability struct {
 	UpdatedAt     time.Time
 }
 
+// HasHTTPBinding 报告草稿是否包含完整的 HTTP 工具绑定。
+func (c *Capability) HasHTTPBinding() bool {
+	return c != nil && c.EndpointURL != "" && c.HTTPMethod != "" && c.APIPath != ""
+}
+
 // CapabilityVersion 能力内容的不可变发布快照。
 // 内容（描述 / SPEC / RUNBOOK 等 Markdown）是主体，接口字段保存 HTTP 工具绑定。
 type CapabilityVersion struct {
@@ -106,6 +112,11 @@ type CapabilityVersion struct {
 	PublishedAt  time.Time
 	// 展示用联查字段
 	PublishedByUsername string
+}
+
+// HasHTTPBinding 报告该发布版本是否包含完整的 HTTP 工具绑定。
+func (v *CapabilityVersion) HasHTTPBinding() bool {
+	return v != nil && v.EndpointURL != "" && v.HTTPMethod != "" && v.APIPath != ""
 }
 
 // Project 协作空间项目。留言板隶属于项目，不隶属于能力或个人。
@@ -151,36 +162,36 @@ type Thread struct {
 // IsOpen 报告留言板是否开放追加。
 func (t *Thread) IsOpen() bool { return t != nil && t.Status == ThreadStatusOpen }
 
-// Floor 楼层。仅追加、不编辑不删除；AgentID 为空表示真人发言。
+// Floor 楼层。仅追加；CredentialID 为空表示通过网页会话发言。
 type Floor struct {
 	ID           string
 	ThreadID     string
 	FloorNo      int
 	AuthorUserID string
-	AgentID      string
+	CredentialID string
 	Body         string
 	CreatedAt    time.Time
 	// 展示用联查字段
 	AuthorUsername    string
 	AuthorDisplayName string
-	AgentName         string
+	CredentialName    string
 }
 
-// IsAgent 报告楼层是否由 Agent 发表。
-func (f *Floor) IsAgent() bool { return f != nil && f.AgentID != "" }
+// UsesCredential 报告楼层是否通过调用凭证发表，不证明 Agent 实例身份。
+func (f *Floor) UsesCredential() bool { return f != nil && f.CredentialID != "" }
 
-// ProjectBan 项目禁言条目。AgentID 为空表示 user 级（覆盖该真人全部 Agent 与本人网页发言）。
+// ProjectBan 项目禁言条目。CredentialID 为空表示账号级，覆盖其所有凭证与本人网页发言。
 type ProjectBan struct {
-	ProjectID string
-	UserID    string
-	AgentID   string // '' = user 级禁言
-	Reason    string
-	BannedBy  string
-	CreatedAt time.Time
+	ProjectID    string
+	UserID       string
+	CredentialID string // 空值为账号级；否则只限制该凭证记录
+	Reason       string
+	BannedBy     string
+	CreatedAt    time.Time
 	// 展示用联查字段
 	Username         string
 	DisplayName      string
-	AgentName        string
+	CredentialName   string
 	BannedByUsername string
 }
 
@@ -232,17 +243,20 @@ type AuditLog struct {
 	CreatedAt     time.Time
 	Event         string
 	ActorUserID   string // 可空
-	AgentID       string // 可空
+	CredentialID  string // 相关凭证记录，兼容数据库 agent_id 列，可空
 	CapabilityID  string // 可空
 	ProjectID     string // 可空
 	ThreadID      string // 可空
-	SubjectUserID string // 授权判断针对的用户，可空
+	SubjectUserID string // 授权判断或管理操作针对的账号，可空
 	Outcome       string // success / failure
 	Reason        string
 	RequestID     string
 	Detail        string
 	// 展示用联查字段
-	ActorUsername  string
-	CapabilityName string
-	ProjectName    string
+	ActorUsername           string
+	SubjectUsername         string
+	CredentialName          string
+	CredentialOwnerUsername string
+	CapabilityName          string
+	ProjectName             string
 }
