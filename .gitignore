@@ -34,3 +34,10 @@ tmp/
 out/
 _tacp
 .playwright-cli
+
+
+/deploy.sh
+/docs/deployment.md
+/scripts/test_deploy.py
+/docs
+docs
