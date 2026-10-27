@@ -6,9 +6,10 @@
     <button type="button" class="btn btn-small" data-copy="#secret-token">复制</button>
   </div>
   <h2>配置示例</h2>
-  <pre class="code" id="export-block">export AGENTPERMIT_BASE_URL="{{.Data.BaseURL}}"
-export AGENTPERMIT_AGENT_TOKEN="{{.Data.Token}}"</pre>
+  <pre class="code" id="export-block">export {{.ClientEnvPrefix}}BASE_URL="{{.Data.BaseURL}}"
+export {{.ClientEnvPrefix}}AGENT_TOKEN="{{.Data.Token}}"</pre>
   <button type="button" class="btn btn-small" data-copy="#export-block">复制配置</button>
+  <p><a href="/agent">阅读 Agent 接入说明</a>。基地址为平台根地址，新接口路径为 <code>/agent/v1/me</code>；旧接口继续可用。</p>
   <p class="warn">不要把 Token 提交到代码仓库或粘贴到不可信的地方。轮换后旧 Token 失效，凭证 ID 和已有限制保持不变；撤销只影响这条凭证。</p>
   <p><a class="btn" href="/agents">返回我的Agent凭证</a></p>
 </div>

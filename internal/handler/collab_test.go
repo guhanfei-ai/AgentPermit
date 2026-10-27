@@ -76,7 +76,7 @@ func seedProjectViaWeb(t *testing.T, e *testEnv, owner *model.User, slug string)
 	return p
 }
 
-// seedThreadViaWeb 用网页流程创建留言板（仅真人可创建）。
+// seedThreadViaWeb 用网页流程创建帖子（仅真人可创建）。
 func seedThreadViaWeb(t *testing.T, e *testEnv, owner *model.User, p *model.Project, title string) *model.Thread {
 	t.Helper()
 	c := newHTTPClient(t, e.ts.URL)
@@ -86,11 +86,11 @@ func seedThreadViaWeb(t *testing.T, e *testEnv, owner *model.User, p *model.Proj
 		"title": {title}, "body": {title + "：首帖内容"},
 	})
 	if resp.StatusCode != http.StatusSeeOther {
-		t.Fatalf("创建留言板失败: %d", resp.StatusCode)
+		t.Fatalf("创建帖子失败: %d", resp.StatusCode)
 	}
 	threads, err := e.st.ListThreadsByProject(e.ctx, p.ID)
 	if err != nil || len(threads) != 1 {
-		t.Fatalf("查询留言板失败: %v len=%d", err, len(threads))
+		t.Fatalf("查询帖子失败: %v len=%d", err, len(threads))
 	}
 	return threads[0]
 }
@@ -138,7 +138,7 @@ func TestCollabLoop(t *testing.T) {
 		t.Fatalf("next_after/has_more 应为 3/false: %v", body)
 	}
 
-	// 3) Agent 不能创建留言板：无 API 路由（405），网页路由对 Bearer 不构成登录态（302 跳登录）
+	// 3) Agent 不能创建帖子：无 API 路由（405），网页路由对 Bearer 不构成登录态（302 跳登录）
 	code, _ = postJSON(t, e.ts.URL, "/api/v1/projects", zToken1, `{"name":"x"}`)
 	if code != http.StatusMethodNotAllowed {
 		t.Fatalf("Agent 创建频道应 405: %d", code)
@@ -149,7 +149,7 @@ func TestCollabLoop(t *testing.T) {
 	resp.Body.Close()
 	// Agent 无会话 Cookie 与 CSRF Token，网页表单先被 CSRF 拦截（403）；无论哪层都轮不到创建
 	if resp.StatusCode != http.StatusForbidden && resp.StatusCode != http.StatusFound {
-		t.Fatalf("Agent 走网页创建留言板应被拒绝: %d", resp.StatusCode)
+		t.Fatalf("Agent 走网页创建帖子应被拒绝: %d", resp.StatusCode)
 	}
 
 	// 4) 管理员 user 级禁言张三 → 其全部 Agent 403，本人网页追加也被拒
@@ -175,7 +175,7 @@ func TestCollabLoop(t *testing.T) {
 	if code != http.StatusOK {
 		t.Fatalf("禁言后读取应 200: %d", code)
 	}
-	// 张三本人网页追加也被拒（留言板页因禁言无表单，CSRF 从频道页取）
+	// 张三本人网页追加也被拒（帖子页因禁言无表单，CSRF 从频道页取）
 	zc := newHTTPClient(t, e.ts.URL)
 	zc.loginViaWeb(zhangsan.Username, testPassword)
 	zc.refreshCSRF("/projects/" + p.Slug)
@@ -233,11 +233,11 @@ func TestCollabLoop(t *testing.T) {
 		t.Fatalf("楼层计数应为 7: %d", th.FloorCount)
 	}
 
-	// 8) 关闭留言板：所有人不可追加；重开后恢复
+	// 8) 关闭帖子：所有人不可追加；重开后恢复
 	admin.refreshCSRF("/threads/" + thread.ID)
 	resp, _ = admin.postForm("/threads/"+thread.ID+"/close", url.Values{})
 	if resp.StatusCode != http.StatusSeeOther {
-		t.Fatalf("关闭留言板失败: %d", resp.StatusCode)
+		t.Fatalf("关闭帖子失败: %d", resp.StatusCode)
 	}
 	code, body = postJSON(t, e.ts.URL, "/api/v1/threads/"+thread.ID+"/floors", lToken, `{"body":"closed"}`)
 	if code != http.StatusConflict || body["error"].(map[string]any)["code"] != "thread_closed" {
@@ -246,7 +246,7 @@ func TestCollabLoop(t *testing.T) {
 	admin.refreshCSRF("/threads/" + thread.ID)
 	resp, _ = admin.postForm("/threads/"+thread.ID+"/reopen", url.Values{})
 	if resp.StatusCode != http.StatusSeeOther {
-		t.Fatalf("重开留言板失败: %d", resp.StatusCode)
+		t.Fatalf("重开帖子失败: %d", resp.StatusCode)
 	}
 	code, _ = postJSON(t, e.ts.URL, "/api/v1/threads/"+thread.ID+"/floors", lToken, `{"body":"reopened"}`)
 	if code != http.StatusCreated {
@@ -262,7 +262,7 @@ func TestCollabLoop(t *testing.T) {
 	}
 }
 
-// TestThreadAPIGuards 留言板追加的守卫：401/400/404/409。
+// TestThreadAPIGuards 帖子追加的守卫：401/400/404/409。
 func TestThreadAPIGuards(t *testing.T) {
 	e := newTestEnv(t)
 	wangwu := e.seedUser("wangwu", "王五")
@@ -281,10 +281,10 @@ func TestThreadAPIGuards(t *testing.T) {
 	if code != http.StatusBadRequest || body["error"].(map[string]any)["code"] != "invalid_request" {
 		t.Fatalf("空 body 应 400: %d %v", code, body)
 	}
-	// 不存在的留言板 404
+	// 不存在的帖子 404
 	code, _ = postJSON(t, e.ts.URL, "/api/v1/threads/nonexistent/floors", token, `{"body":"x"}`)
 	if code != http.StatusNotFound {
-		t.Fatalf("不存在留言板应 404: %d", code)
+		t.Fatalf("不存在帖子应 404: %d", code)
 	}
 	// 归档频道 → 409 project_archived
 	if err := e.st.SetProjectStatus(e.ctx, p.ID, model.ProjectStatusArchived); err != nil {
@@ -294,13 +294,13 @@ func TestThreadAPIGuards(t *testing.T) {
 	if code != http.StatusConflict || body["error"].(map[string]any)["code"] != "project_archived" {
 		t.Fatalf("归档频道追加应 409 project_archived: %d %v", code, body)
 	}
-	// 归档频道不能新建留言板
+	// 归档频道不能新建帖子
 	admin := newHTTPClient(t, e.ts.URL)
 	admin.loginViaWeb(wangwu.Username, testPassword)
 	admin.refreshCSRF("/projects/" + p.Slug)
 	resp, _ := admin.postForm("/projects/"+p.Slug+"/threads", url.Values{"title": {"t2"}, "body": {"b"}})
 	if resp.StatusCode != http.StatusFound {
-		t.Fatalf("归档频道新建留言板应被拒: %d", resp.StatusCode)
+		t.Fatalf("归档频道新建帖子应被拒: %d", resp.StatusCode)
 	}
 	if page := admin.getBody("/projects/" + p.Slug); !strings.Contains(page, "已归档") {
 		t.Fatalf("频道页应提示已归档")

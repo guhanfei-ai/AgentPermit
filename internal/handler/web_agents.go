@@ -73,7 +73,7 @@ func (s *Server) pageCredentialTokenShow(w http.ResponseWriter, r *http.Request)
 		"CredentialID":   id,
 		"CredentialName": credential.Name,
 		"Token":          token,
-		"BaseURL":        s.cfg.BaseURL,
+		"BaseURL":        s.publicAPIBaseURL(r, ""),
 	})
 }
 

@@ -1,0 +1,6 @@
+{{define "content"}}
+<article class="agent-guide{{if .Data.Environment}} has-environment{{end}}">
+  {{if .Data.Environment}}<div class="environment-watermark" aria-label="当前环境：{{.Data.Environment}}">{{.Data.Environment}} <span>环境</span></div>{{end}}
+  {{.Data.Content}}
+</article>
+{{end}}

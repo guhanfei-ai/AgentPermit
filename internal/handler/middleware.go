@@ -5,6 +5,7 @@ import (
 	"crypto/rand"
 	"encoding/hex"
 	"net/http"
+	"strings"
 	"time"
 
 	"agentpermit/internal/auth"
@@ -65,7 +66,7 @@ func (s *Server) logAccess(rec *statusRecorder, r *http.Request, start time.Time
 }
 
 func isAPIPath(p string) bool {
-	return len(p) >= 5 && p[:5] == "/api/"
+	return strings.HasPrefix(p, "/api/") || strings.HasPrefix(p, "/agent/") || strings.HasPrefix(p, "/web/")
 }
 
 func newRequestID() string {
@@ -109,6 +110,7 @@ func (s *Server) sessionMiddleware(next http.Handler) http.Handler {
 				u, err := s.store.GetUserByID(r.Context(), sess.UserID)
 				if err == nil && u.IsActive() {
 					r = r.WithContext(withUser(r.Context(), u, sess))
+					s.bindRuntime(r, u.ID)
 				} else {
 					// 用户已禁用：会话立即失效
 					s.setCookie(w, cookieSession, "", -1)

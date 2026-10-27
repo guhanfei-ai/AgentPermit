@@ -6,6 +6,7 @@ import (
 	"io"
 	"log/slog"
 	"net/http"
+	"strings"
 	"time"
 
 	"agentpermit/internal/config"
@@ -31,6 +32,11 @@ type templateIface interface {
 
 // New 构建平台 Server。
 func New(cfg config.Config, st *store.Store, logger *slog.Logger) (*Server, error) {
+	cfg.SiteName = strings.TrimSpace(cfg.SiteName)
+	if cfg.SiteName == "" {
+		cfg.SiteName = config.DefaultSiteName
+	}
+	cfg.OrganizationName = strings.TrimSpace(cfg.OrganizationName)
 	tmpl, err := web.Templates()
 	if err != nil {
 		return nil, err
@@ -104,19 +110,22 @@ func (s *Server) Routes() http.Handler {
 		w.Write([]byte("ok"))
 	})
 
-	// API：Bearer 凭证认证，独立于网页会话，错误一律 JSON。
+	// Agent 新入口与旧 API 共用处理器，认证仍独立于网页会话。
+	agentAPI := http.NewServeMux()
+	agentAPI.HandleFunc("GET /agent", s.serveAgentGuide)
+	agentAPI.HandleFunc("GET /agent/{$}", s.serveAgentGuide)
+	s.registerAgentAPI(agentAPI, "/agent/v1", "/agent/v1/me")
+	root.Handle("/agent", agentAPI)
+	root.Handle("/agent/", s.jsonAPIRouter(agentAPI))
+
 	api := http.NewServeMux()
-	api.HandleFunc("GET /api/v1/agent/me", s.apiCredentialMe)
-	api.HandleFunc("GET /api/v1/capabilities", s.apiCapabilities)
-	api.HandleFunc("GET /api/v1/capabilities/{id}", s.apiCapabilityDetail)
+	s.registerAgentAPI(api, "/api/v1", "/api/v1/agent/me")
 	api.HandleFunc("POST /api/v1/service/authorize", s.apiServiceAuthorize)
-	// 协作空间：频道与留言板只读 + 追加楼层；创建频道/留言板是真人专属，不提供 API。
-	api.HandleFunc("GET /api/v1/projects", s.apiProjects)
-	api.HandleFunc("GET /api/v1/projects/{id}", s.apiProjectDetail)
-	api.HandleFunc("GET /api/v1/projects/{id}/threads", s.apiProjectThreads)
-	api.HandleFunc("GET /api/v1/threads/{id}", s.apiThreadDetail)
-	api.HandleFunc("POST /api/v1/threads/{id}/floors", s.apiThreadAppend)
-	root.Handle("/api/", api)
+	api.HandleFunc("POST /api/v1/service/temporary-credentials/introspect", s.apiTrustIntrospect)
+	root.Handle("/api/", s.jsonAPIRouter(api))
+	webAPI := http.NewServeMux()
+	s.registerWebAPI(webAPI)
+	root.Handle("/web/", s.sessionMiddleware(s.jsonAPIRouter(webAPI)))
 
 	// Web：服务端渲染页面，Session + CSRF。
 	pages := http.NewServeMux()
@@ -125,8 +134,27 @@ func (s *Server) Routes() http.Handler {
 	pages.HandleFunc("GET /register", s.pageRegister)
 	pages.HandleFunc("POST /register", s.pageRegisterSubmit)
 	pages.HandleFunc("POST /logout", s.pageLogout)
-	pages.HandleFunc("GET /", s.requireLogin(s.pageDashboard))
+	pages.HandleFunc("GET /{$}", s.requireLogin(s.pageDashboard))
 	pages.HandleFunc("GET /dashboard/stats", s.requireLogin(s.pageDashboardStats))
+	pages.HandleFunc("GET /profile", s.requireLogin(s.pageProfile))
+	pages.HandleFunc("POST /profile/password", s.requireLogin(s.pageProfilePassword))
+	pages.HandleFunc("GET /servers", s.requireLogin(s.pageServers))
+	pages.HandleFunc("POST /servers", s.requireAdmin(s.pageServerSave))
+	pages.HandleFunc("GET /servers/{id}", s.requireLogin(s.pageServerDetail))
+	pages.HandleFunc("POST /servers/{id}", s.requireAdmin(s.pageServerSave))
+	pages.HandleFunc("POST /servers/{id}/rotate", s.requireAdmin(s.pageServerRotate))
+	pages.HandleFunc("POST /servers/{id}/groups", s.requireAdmin(s.pageFieldGroupCreate))
+	pages.HandleFunc("GET /trust", s.requireLogin(s.pageTrust))
+	pages.HandleFunc("GET /trust/state", s.requireLogin(s.trustState))
+	pages.HandleFunc("POST /trust/grants", s.requireTrustAdmin(s.pageGrantCreate))
+	pages.HandleFunc("GET /trust/grants/{id}", s.requireLogin(s.pageGrantDetail))
+	pages.HandleFunc("POST /trust/grants/{id}/revoke", s.requireTrustAdmin(s.pageGrantRevoke))
+	pages.HandleFunc("POST /trust/bans", s.requireTrustAdmin(s.pageBanSave))
+	pages.HandleFunc("GET /trust/bans/{id}", s.requireAdmin(s.pageBanDetail))
+	pages.HandleFunc("POST /trust/bans/{id}", s.requireTrustAdmin(s.pageBanSave))
+	pages.HandleFunc("POST /trust/bans/{id}/release", s.requireTrustAdmin(s.pageBanRelease))
+	pages.HandleFunc("POST /trust/holiday", s.requireTrustAdmin(s.pageHolidayCreate))
+	pages.HandleFunc("POST /trust/holiday/unlock", s.requireAdmin(s.pageHolidayUnlock))
 	// AI聊天广场与协作空间
 	pages.HandleFunc("GET /square", s.requireLogin(s.pageSquare))
 	pages.HandleFunc("POST /projects", s.requireLogin(s.pageProjectCreate))
@@ -173,7 +201,11 @@ func (s *Server) Routes() http.Handler {
 	pages.HandleFunc("GET /catalog", s.requireLogin(s.pageCatalog))
 	pages.HandleFunc("GET /catalog/{id}", s.requireLogin(s.pageCatalogDetail))
 	pages.HandleFunc("GET /audit", s.requireLogin(s.pageAudit))
+	pages.HandleFunc("GET /admin/audit", s.requireAdmin(s.pageAdminAudit))
+	pages.HandleFunc("GET /admin/settings", s.requireAdmin(s.pageAdminSettings))
+	pages.HandleFunc("POST /admin/settings/holiday-unlock-password", s.requireAdmin(s.pageAdminHolidayUnlockPassword))
 	pages.HandleFunc("GET /admin/users", s.requireAdmin(s.pageAdminUsers))
+	pages.HandleFunc("POST /admin/users", s.requireAdmin(s.pageAdminUserCreate))
 	pages.HandleFunc("POST /admin/users/{id}/disable", s.requireAdmin(s.pageAdminDisable))
 	pages.HandleFunc("POST /admin/users/{id}/enable", s.requireAdmin(s.pageAdminEnable))
 

@@ -7,56 +7,77 @@
     <a class="btn" href="/square">返回AI聊天广场</a>
   </div>
 </div>
-{{if eq $p.Status "archived"}}<div class="flash flash-error">频道已归档：全部留言板只读，不可追加楼层或新建留言板。</div>{{end}}
-<div class="card">
-  <h2>频道信息</h2>
+{{if eq $p.Status "archived"}}<div class="flash flash-error">频道已归档：全部帖子只读，不可发言或新建帖子。</div>{{end}}
+<div class="project-detail-top">
+<section class="card project-detail-info" aria-labelledby="project-info-title">
+  <h2 id="project-info-title">频道信息</h2>
   <table class="kv">
     <tr><th>描述</th><td>{{$p.Description}}</td></tr>
     <tr><th>slug</th><td><code>{{$p.Slug}}</code></td></tr>
     <tr><th>状态</th><td>{{if eq $p.Status "active"}}active{{else}}archived（只读）{{end}}</td></tr>
     <tr><th>创建者</th><td>{{$p.CreatedByDisplay}}（{{$p.CreatedByUsername}}）</td></tr>
   </table>
-</div>
-<div class="card">
-  <h2>AGENTS.md（官方引导）</h2>
+</section>
+<section class="card project-detail-guide" aria-labelledby="project-guide-title">
+  <div class="project-guide-head">
+    <h2 id="project-guide-title">AGENTS.md（官方引导）</h2>
+    {{if .Data.Doc}}<button type="button" class="btn btn-small" data-channel-dialog-open="project-guide-dialog">查看全文</button>{{end}}
+  </div>
   {{with .Data.Doc}}
-  <p class="muted">latest 标记指向 <span class="badge">v{{.Version}}</span>（发布时间 {{fmtTime .PublishedAt}}）。Agent 通过 <code>GET /api/v1/projects/{{$p.ID}}</code> 读取。</p>
-  <pre class="spec">{{.Body}}</pre>
+  <p class="project-guide-meta"><span class="badge">latest · v{{.Version}}</span><span>发布于 {{fmtTime .PublishedAt}}</span></p>
+  <div class="project-guide-preview" data-channel-preview><pre class="project-guide-excerpt"><code>{{.Body}}</code></pre></div>
   {{else}}
-  <div class="empty">频道尚未发布 AGENTS.md。{{if .Data.IsAdmin}}到 <a href="/projects/{{$p.Slug}}/agents-md">AGENTS.md 编辑页</a> 起草并发布。{{end}}</div>
+  <p class="muted project-guide-empty">频道尚未发布 AGENTS.md。{{if .Data.IsAdmin}}到 <a href="/projects/{{$p.Slug}}/agents-md">AGENTS.md 编辑页</a> 起草并发布。{{end}}</p>
   {{end}}
+</section>
 </div>
-<div class="card">
-  <h2>留言板</h2>
+{{with .Data.Doc}}
+<dialog id="project-guide-dialog" class="channel-dialog channel-dialog--guide" aria-labelledby="project-guide-dialog-title" data-channel-dialog>
+  <div class="channel-dialog__surface">
+    <header class="channel-dialog__header">
+      <div><h2 id="project-guide-dialog-title">AGENTS.md 全文</h2><p class="channel-dialog__subtitle">{{$p.Name}} · latest v{{.Version}} · {{fmtTime .PublishedAt}}</p></div>
+      <button type="button" class="channel-dialog__close" aria-label="关闭全文" data-channel-dialog-close data-channel-initial-focus autofocus>×</button>
+    </header>
+    <div class="channel-dialog__body" tabindex="0" aria-label="AGENTS.md 正文">
+      <pre class="project-guide-fulltext"><code data-channel-guide-fulltext>{{.Body}}</code></pre>
+      <p class="project-guide-api muted">Agent 通过 <code>GET /agent/v1/projects/{{$p.ID}}</code> 读取完整引导。</p>
+    </div>
+  </div>
+</dialog>
+{{end}}
+<div class="card table-panel">
+  <h2>帖子</h2>
   {{if .Data.Threads}}
-  <table>
-    <thead><tr><th>标题</th><th>状态</th><th>楼层数</th><th>创建者</th><th>最近活跃</th><th>操作</th></tr></thead>
+  <div class="table-scroll">
+  <table class="responsive-table">
+    <thead><tr><th>标题</th><th>状态</th><th>楼数</th><th>创建者</th><th>最近活跃</th><th>操作</th></tr></thead>
     <tbody>
       {{range .Data.Threads}}
       <tr>
-        <td><a href="/threads/{{.ID}}"><strong>{{.Title}}</strong></a></td>
-        <td>{{if eq .Status "open"}}<span class="badge ok">open</span>{{else}}<span class="badge dead">closed</span>{{end}}</td>
-        <td>{{.FloorCount}} / {{$.Data.MaxFloors}}</td>
-        <td>{{.CreatedByDisplay}}（{{.CreatedByUsername}}）</td>
-        <td class="muted">{{fmtTime .UpdatedAt}}</td>
-        <td class="actions"><a class="btn btn-small" href="/threads/{{.ID}}">查看</a></td>
+        <td data-label="标题"><a href="/threads/{{.ID}}"><strong>{{.Title}}</strong></a></td>
+        <td data-label="状态">{{if eq .Status "open"}}<span class="badge ok">open</span>{{else}}<span class="badge dead">closed</span>{{end}}</td>
+        <td data-label="楼数">{{.FloorCount}} / {{$.Data.MaxFloors}}</td>
+        <td data-label="创建者">{{.CreatedByDisplay}}（{{.CreatedByUsername}}）</td>
+        <td class="muted" data-label="最近活跃">{{fmtTime .UpdatedAt}}</td>
+        <td class="actions" data-label="操作"><a class="btn btn-small" href="/threads/{{.ID}}">查看</a></td>
       </tr>
       {{end}}
     </tbody>
   </table>
+  </div>
   {{else}}
-  <div class="empty">还没有留言板。</div>
+  <div class="empty">还没有帖子。</div>
   {{end}}
 </div>
 {{if .Data.CanPost}}
 <div class="card">
-  <h2>新建留言板（仅真人）</h2>
-  <p class="muted">留言板由真人创建、Agent 参与追加。创建后它有稳定 ID，可写入你的 Agent 规约供后续会话接手；单个留言板最多 5000 楼。</p>
+  <h2>新建帖子（仅真人）</h2>
+  <p class="muted">帖子由真人创建，真人与 Agent 都可发言，每次发言新增一楼。发帖正文是 1 楼，单个帖子最多 {{.Data.MaxFloors}} 楼。帖子有稳定 ID，可写入你的 Agent 规约供后续会话接手。</p>
   <form method="post" action="/projects/{{$p.Slug}}/threads" class="form">
     <input type="hidden" name="csrf_token" value="{{.CSRFToken}}">
     <label>标题<input type="text" name="title" required maxlength="100"></label>
-    <label>首帖内容<textarea name="body" rows="5" required maxlength="20000"></textarea></label>
-    <button type="submit" class="btn btn-primary">创建留言板</button>
+    <label>1 楼正文<textarea name="body" rows="5" required maxlength="20000"></textarea></label>
+    <button type="submit" class="btn btn-primary">创建帖子</button>
   </form>
 </div>
 {{end}}

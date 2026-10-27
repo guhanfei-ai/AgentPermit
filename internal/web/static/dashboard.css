@@ -1,8 +1,5 @@
 /* 首页运行面板：白色面板、蓝青色与紫色数据层，其他页面继续使用原样式。 */
 .dashboard-page { color:#24313f; background:#f4f6f8; }
-.dashboard-page .topbar { background:#1f2d3d; border-bottom:1px solid #1f2d3d; padding:8px 36px; }
-.dashboard-page .nav a { color:#cfd8e3; }
-.dashboard-page .nav a.active { background:#1668dc; color:#fff; }
 .dashboard-page .container { max-width:1600px; padding:0 36px; margin:28px auto 20px; }
 .dashboard-page .footer { color:#6b7a89; padding:14px 36px 24px; }
 .dashboard { --dash-cyan:#1668dc; --dash-violet:#7653e8; --dash-muted:#6b7a89; --dash-border:#d9e2ec; }

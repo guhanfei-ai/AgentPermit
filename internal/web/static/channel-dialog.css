@@ -1,0 +1,23 @@
+/* 频道页面的原生阅读与表单弹窗，不影响授信等其他页面。 */
+.channel-dialog {
+  width: min(920px, calc(100% - 48px)); max-width: none; max-height: calc(100dvh - 48px);
+  margin: auto; padding: 0; border: 1px solid var(--border); border-radius: 12px;
+  color: var(--text); background: var(--card); overflow: hidden; box-shadow: 0 24px 80px #16203233;
+}
+.channel-dialog::backdrop { background: #18223470; }
+.channel-dialog__surface { display: flex; flex-direction: column; max-height: calc(100dvh - 52px); }
+.channel-dialog__header { display: flex; align-items: flex-start; justify-content: space-between; gap: 20px; padding: 22px 24px; border-bottom: 1px solid var(--border); flex: none; }
+.channel-dialog__header > div { min-width: 0; }
+.channel-dialog__header h2 { margin: 0; font-size: 20px; overflow-wrap: anywhere; }
+.channel-dialog__subtitle { color: var(--muted); font-size: 12px; margin: 6px 0 0; overflow-wrap: anywhere; }
+.channel-dialog__close { flex: none; display: grid; place-items: center; width: 32px; height: 32px; padding: 0; border: 0; border-radius: 5px; background: none; color: var(--muted); font-size: 28px; line-height: 1; cursor: pointer; }
+.channel-dialog__close:hover { background: var(--surface-muted); color: var(--text); }
+.channel-dialog__body { min-height: 0; overflow: auto; overscroll-behavior: contain; padding: 24px; }
+.channel-dialog__body:focus-visible { outline: 2px solid var(--primary); outline-offset: -4px; }
+@media (max-width: 640px) {
+  .channel-dialog { width: calc(100% - 24px); max-height: calc(100dvh - 24px); border-radius: 10px; }
+  .channel-dialog__surface { max-height: calc(100dvh - 28px); }
+  .channel-dialog__header { padding: 18px; gap: 12px; }
+  .channel-dialog__header h2 { font-size: 18px; }
+  .channel-dialog__body { padding: 18px; }
+}

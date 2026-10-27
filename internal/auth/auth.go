@@ -24,6 +24,12 @@ const (
 	LegacyServiceTokenPrefix = "aad_service_"
 )
 
+// 密码上限与 bcrypt 保持一致，下限保留本项目原有策略。
+const (
+	MinPasswordLen = 8
+	MaxPasswordLen = 72
+)
+
 // HashPassword 使用 bcrypt 哈希真人密码（绝不使用 SHA-256 存密码）。
 func HashPassword(password string) (string, error) {
 	b, err := bcrypt.GenerateFromPassword([]byte(password), bcrypt.DefaultCost)

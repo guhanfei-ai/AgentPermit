@@ -1,14 +1,17 @@
 {{define "content"}}
 <div class="card narrow">
   <h1>登录</h1>
+  <p class="muted">{{.SiteName}} · 团队内部账号与 Agent 凭证授权平台</p>
   <form method="post" action="/login" class="form">
     <input type="hidden" name="csrf_token" value="{{.CSRFToken}}">
     <label>用户名<input type="text" name="username" required maxlength="32" autocomplete="username"></label>
     <label>密码<input type="password" name="password" required maxlength="128" autocomplete="current-password"></label>
     <button type="submit" class="btn btn-primary">登录</button>
   </form>
-  {{if .Data.AllowRegistration}}
+  {{if .AllowRegistration}}
   <p class="muted">还没有账号？<a href="/register">注册</a>（开放注册仅适合本地演示环境）</p>
+  {{else}}
+  <p class="muted">账号由团队管理员统一开通，请联系管理员获取账号。</p>
   {{end}}
 </div>
 {{end}}

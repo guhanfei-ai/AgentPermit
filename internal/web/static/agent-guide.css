@@ -1,0 +1,67 @@
+/* 规约正文样式限定在文档内，顶栏沿用全站布局。 */
+.agent-guide {
+  max-width: 1040px;
+  margin: 0 auto;
+  padding: 36px 48px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: var(--card);
+  color: var(--text);
+  font-size: 15px;
+  line-height: 1.75;
+  overflow-wrap: anywhere;
+}
+.agent-guide :is(h1, h2, h3, h4, h5, h6) { margin: 1.6em 0 .65em; line-height: 1.35; font-weight: 600; }
+.agent-guide h1 { margin-top: 0; font-size: 30px; }
+.agent-guide h2 { padding-bottom: .3em; border-bottom: 1px solid #e5e7eb; font-size: 1.45em; }
+.agent-guide h3 { font-size: 1.2em; }
+.agent-guide :is(p, ul, ol, blockquote, pre, table) { margin: 0 0 1em; }
+.agent-guide :is(ul, ol) { padding-left: 1.6em; }
+.agent-guide li > p { margin-bottom: .5em; }
+.agent-guide a { color: var(--primary); text-decoration: underline; text-underline-offset: .15em; }
+.agent-guide code { padding: .15em .35em; border-radius: 3px; background: #f0f1f3; font-size: .9em; }
+.agent-guide :is(code, pre) { font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; }
+.agent-guide pre {
+  padding: 18px 20px;
+  border: 1px solid #282c34;
+  border-radius: 6px;
+  background: #0d1117;
+  color: #e6edf3;
+  line-height: 1.6;
+  overflow-x: auto;
+  overflow-wrap: normal;
+}
+.agent-guide pre code { padding: 0; border-radius: 0; background: transparent; color: inherit; }
+.agent-guide blockquote { padding: 0 1em; border-left: 3px solid #d0d7de; color: #57606a; }
+.agent-guide table { display: block; max-width: 100%; border-collapse: collapse; overflow-x: auto; }
+.agent-guide :is(th, td) { padding: .45em .75em; border: 1px solid #d0d7de; }
+.agent-guide th { background: #f6f8fa; }
+.agent-guide hr { margin: 1.5em 0; border: 0; border-top: 1px solid #d0d7de; }
+.agent-guide img { max-width: 100%; }
+.agent-guide.has-environment { position: relative; }
+.agent-guide.has-environment > h1:first-of-type { min-height: 64px; padding-right: 220px; }
+.agent-guide .environment-watermark {
+  position: absolute;
+  top: 30px;
+  right: 32px;
+  max-width: 200px;
+  padding: 10px 16px;
+  border: 4px double currentColor;
+  border-radius: 5px;
+  color: rgb(185 28 28 / 78%);
+  font: 800 22px/1.2 ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  letter-spacing: .08em;
+  text-align: center;
+  transform: rotate(-8deg);
+  pointer-events: none;
+  user-select: none;
+}
+.agent-guide .environment-watermark span { font-size: 12px; font-weight: 600; letter-spacing: .12em; white-space: nowrap; }
+@media (max-width: 600px) {
+  .agent-guide { padding: 24px 18px; font-size: 15px; }
+  .agent-guide.has-environment { padding-top: 104px; }
+  .agent-guide.has-environment > h1:first-of-type { min-height: 0; padding-right: 0; }
+  .agent-guide .environment-watermark { top: 24px; right: 24px; padding: 8px 14px; font-size: 18px; }
+  .agent-guide h1 { font-size: 1.7em; }
+  .agent-guide pre { padding: 14px 16px; }
+}

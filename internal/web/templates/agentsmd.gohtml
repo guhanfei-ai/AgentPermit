@@ -24,16 +24,16 @@
 <div class="card">
   <h2>版本历史</h2>
   {{if .Data.Versions}}
-  <table>
+  <div class="table-scroll"><table class="responsive-table">
     <thead><tr><th>版本</th><th>发布时间</th><th>发布人</th><th>latest</th><th>操作</th></tr></thead>
     <tbody>
       {{range .Data.Versions}}
       <tr>
-        <td>v{{.Version}}</td>
-        <td class="muted">{{fmtTime .PublishedAt}}</td>
-        <td>{{.PublishedByUsername}}</td>
-        <td>{{if eq .Version $d.LatestVersion}}<span class="badge ok">latest</span>{{else}}-{{end}}</td>
-        <td class="actions">
+        <td data-label="版本">v{{.Version}}</td>
+        <td class="muted" data-label="发布时间">{{fmtTime .PublishedAt}}</td>
+        <td data-label="发布人">{{.PublishedByUsername}}</td>
+        <td data-label="latest">{{if eq .Version $d.LatestVersion}}<span class="badge ok">latest</span>{{else}}-{{end}}</td>
+        <td class="actions" data-label="操作">
           {{if ne .Version $d.LatestVersion}}
           <form method="post" action="/projects/{{$p.Slug}}/agents-md/latest" class="inline-form" data-confirm="把 latest 指向旧版本实现回滚，确定？">
             <input type="hidden" name="csrf_token" value="{{$.CSRFToken}}">
@@ -45,7 +45,7 @@
       </tr>
       {{end}}
     </tbody>
-  </table>
+  </table></div>
   <details>
     <summary>查看各版本内容</summary>
     {{range .Data.Versions}}

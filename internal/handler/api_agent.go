@@ -46,6 +46,16 @@ func (s *Server) requireAgentAPI(next func(w http.ResponseWriter, r *http.Reques
 			s.jsonError(w, r, http.StatusUnauthorized, "unauthorized", "调用凭证无效")
 			return
 		}
+		code, err := s.store.WorkDenial(r.Context(), owner.ID, credential.ID, "", "")
+		if err != nil {
+			s.jsonError(w, r, http.StatusServiceUnavailable, "unavailable", "暂时无法核验管控状态")
+			return
+		}
+		if code != "" {
+			s.audit(r, &model.AuditLog{Event: "agent_work_denied", SubjectUserID: owner.ID, CredentialID: credential.ID, Outcome: "failure", Reason: code})
+			s.jsonError(w, r, http.StatusForbidden, code, "当前凭证受作业管控限制")
+			return
+		}
 		s.bindRuntime(r, owner.ID)
 		next(w, r, credential, owner)
 	}

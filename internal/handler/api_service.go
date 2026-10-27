@@ -30,11 +30,13 @@ type authorizeUserInfo struct {
 }
 
 type authorizeResponse struct {
-	Allowed      bool                     `json:"allowed"`
-	Reason       string                   `json:"reason"`
-	CapabilityID string                   `json:"capability_id"`
-	Credential   *authorizeCredentialInfo `json:"agent,omitempty"`
-	User         *authorizeUserInfo       `json:"user,omitempty"`
+	Allowed       bool                     `json:"allowed"`
+	Reason        string                   `json:"reason"`
+	CapabilityID  string                   `json:"capability_id"`
+	Credential    *authorizeCredentialInfo `json:"agent,omitempty"`
+	User          *authorizeUserInfo       `json:"user,omitempty"`
+	AIInstruction string                   `json:"ai_instruction,omitempty"`
+	Retryable     *bool                    `json:"retryable,omitempty"`
 }
 
 // apiServiceAuthorize 是独立服务使用的授权校验接口。
@@ -90,6 +92,16 @@ func (s *Server) apiServiceAuthorize(w http.ResponseWriter, r *http.Request) {
 		s.writeAuthorizeDecision(w, r, cred.CapabilityID, policy.Decision{Allowed: false, Reason: policy.ReasonInvalidAgentToken}, nil, nil)
 		return
 	}
+	// 旧能力授权也遵守账号、凭证与全局管控，避免通过兼容入口绕过。
+	code, err := s.store.WorkDenial(r.Context(), owner.ID, credential.ID, "", "")
+	if err != nil {
+		s.jsonError(w, r, http.StatusServiceUnavailable, "unavailable", "暂时无法核验管控状态")
+		return
+	}
+	if code != "" {
+		s.writeAuthorizeDecision(w, r, cred.CapabilityID, policy.Decision{Allowed: false, Reason: code}, credential, owner)
+		return
+	}
 	capability, err := s.store.GetCapabilityByID(r.Context(), cred.CapabilityID)
 	s.bindRuntime(r, owner.ID)
 	if err != nil {
@@ -143,6 +155,13 @@ func (s *Server) writeAuthorizeDecision(w http.ResponseWriter, r *http.Request, 
 		Allowed:      dec.Allowed,
 		Reason:       dec.Reason,
 		CapabilityID: capabilityID,
+	}
+	if !dec.Allowed {
+		resp.AIInstruction = errorAIInstruction(dec.Reason)
+		if resp.AIInstruction != "" {
+			retryable := false
+			resp.Retryable = &retryable
+		}
 	}
 	// 仅在允许时返回调用者身份信息；拒绝时只返回必要信息
 	if dec.Allowed && credential != nil && owner != nil {

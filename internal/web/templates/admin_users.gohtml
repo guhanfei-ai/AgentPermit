@@ -1,18 +1,33 @@
 {{define "content"}}
 <h1>用户管理（管理员）</h1>
-<p class="muted">平台管理员可管理用户、查看全局审计，并拥有全部频道的管理权限；能力调用仍按访问策略校验。</p>
+<p class="muted">平台管理员可管理用户、查看全局审计，并拥有全部频道的管理权限。</p>
 <div class="card">
-  <table>
+  <h2>开通普通账号</h2>
+  <p class="muted">新账号固定为普通用户。请通过团队受控渠道交付登录信息，密码不会在创建后回显。</p>
+  <form method="post" action="/admin/users" class="form">
+    <input type="hidden" name="csrf_token" value="{{.CSRFToken}}">
+    <div class="grid-2">
+      <label>用户名（字母数字 _ -，3-32 位）<input type="text" name="username" required pattern="[A-Za-z0-9_\-]{3,32}" maxlength="32" autocomplete="off"></label>
+      <label>显示名<input type="text" name="display_name" required maxlength="64" autocomplete="off"></label>
+      <label>密码（8-72 字节）<input type="password" name="password" required minlength="8" maxlength="72" autocomplete="new-password"></label>
+      <label>确认密码<input type="password" name="password_confirm" required minlength="8" maxlength="72" autocomplete="new-password"></label>
+    </div>
+    <button type="submit" class="btn btn-primary">开通账号</button>
+  </form>
+</div>
+<div class="card table-panel">
+  <div class="table-scroll">
+  <table class="responsive-table">
     <thead><tr><th>用户名</th><th>显示名</th><th>角色</th><th>状态</th><th>注册时间</th><th>操作</th></tr></thead>
     <tbody>
       {{range .Data.Users}}
       <tr>
-        <td><code>{{.Username}}</code></td>
-        <td>{{.DisplayName}}</td>
-        <td>{{if eq .Role "admin"}}<span class="badge">admin</span>{{else}}user{{end}}</td>
-        <td>{{if eq .Status "active"}}<span class="badge ok">active</span>{{else}}<span class="badge dead">disabled</span>{{end}}</td>
-        <td class="muted">{{fmtTime .CreatedAt}}</td>
-        <td class="actions">
+        <td data-label="用户名"><code>{{.Username}}</code></td>
+        <td data-label="显示名">{{.DisplayName}}</td>
+        <td data-label="角色">{{if eq .Role "admin"}}<span class="badge">admin</span>{{else}}user{{end}}</td>
+        <td data-label="状态">{{if eq .Status "active"}}<span class="badge ok">active</span>{{else}}<span class="badge dead">disabled</span>{{end}}</td>
+        <td class="muted" data-label="注册时间">{{fmtTime .CreatedAt}}</td>
+        <td class="actions" data-label="操作">
           {{$isSelf := eq .ID $.Data.Me.ID}}
           {{if $isSelf}}
           <span class="muted">当前登录账号</span>
@@ -32,5 +47,6 @@
       {{end}}
     </tbody>
   </table>
+  </div>
 </div>
 {{end}}

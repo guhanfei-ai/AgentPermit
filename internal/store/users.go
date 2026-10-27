@@ -7,6 +7,26 @@ import (
 	"agentpermit/internal/model"
 )
 
+// ChangeUserPassword 将密码更新与全部网页会话撤销放在同一事务中。
+// 同时比较旧摘要，避免并发请求覆盖已经更新的密码。
+func (s *Store) ChangeUserPassword(ctx context.Context, userID, oldHash, newHash string) error {
+	return s.withTx(ctx, func(tx *sql.Tx) error {
+		res, err := tx.ExecContext(ctx, `UPDATE users SET password_hash=?, updated_at=? WHERE id=? AND password_hash=?`, newHash, fmtTime(now()), userID, oldHash)
+		if err != nil {
+			return err
+		}
+		n, err := res.RowsAffected()
+		if err != nil {
+			return err
+		}
+		if n != 1 {
+			return ErrConflict
+		}
+		_, err = tx.ExecContext(ctx, `UPDATE sessions SET revoked_at=? WHERE user_id=? AND revoked_at IS NULL`, fmtTime(now()), userID)
+		return err
+	})
+}
+
 const userColumns = `id, username, display_name, password_hash, role, status, created_at, updated_at`
 
 func scanUser(row interface{ Scan(...any) error }) (*model.User, error) {

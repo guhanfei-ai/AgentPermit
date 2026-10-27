@@ -14,12 +14,12 @@ const maxFloorBodyBytes = 20000 // 单层楼内容上限（字节）
 // webFloorsPageSize 网页端默认展示最近 100 楼，更早的通过 ?after= 分段查看。
 const webFloorsPageSize = 100
 
-// pageThread 留言板页：楼层列表 + 真人追加表单 + 管理员关闭/重开。
+// pageThread 帖子页：楼层列表 + 真人追加表单 + 管理员关闭/重开。
 func (s *Server) pageThread(w http.ResponseWriter, r *http.Request) {
 	u := userFrom(r.Context())
 	t, err := s.store.GetThreadByID(r.Context(), r.PathValue("id"))
 	if err != nil {
-		s.renderError(w, r, http.StatusNotFound, "留言板不存在。")
+		s.renderError(w, r, http.StatusNotFound, "帖子不存在。")
 		return
 	}
 	after := 0
@@ -69,7 +69,7 @@ func (s *Server) pageThread(w http.ResponseWriter, r *http.Request) {
 }
 
 // pageThreadAppend 真人追加楼层。楼层仅追加：不可编辑、不可删除。
-// 被禁言、留言板关闭、频道归档、写满 5000 楼时拒绝，与 Agent API 同一套校验。
+// 被禁言、帖子关闭、频道归档、写满 5000 楼时拒绝，与 Agent API 同一套校验。
 func (s *Server) pageThreadAppend(w http.ResponseWriter, r *http.Request) {
 	u := userFrom(r.Context())
 	threadID := r.PathValue("id")
@@ -96,22 +96,22 @@ func mustThreadProject(s *Server, r *http.Request, threadID string) string {
 	return t.ProjectID
 }
 
-// redirectThreadError 把追加楼层的状态类错误映射为提示并回到留言板页。
+// redirectThreadError 把追加楼层的状态类错误映射为提示并回到帖子页。
 func (s *Server) redirectThreadError(w http.ResponseWriter, r *http.Request, threadID string, err error) {
 	switch err {
 	case store.ErrNotFound:
-		s.renderError(w, r, http.StatusNotFound, "留言板不存在。")
+		s.renderError(w, r, http.StatusNotFound, "帖子不存在。")
 	case store.ErrProjectArchived:
-		s.setFlash(w, "error", "频道已归档，留言板只读。")
+		s.setFlash(w, "error", "频道已归档，帖子只读。")
 		http.Redirect(w, r, "/threads/"+threadID, http.StatusFound)
 	case store.ErrThreadClosed:
-		s.setFlash(w, "error", "留言板已关闭，只读。")
+		s.setFlash(w, "error", "帖子已关闭，只读。")
 		http.Redirect(w, r, "/threads/"+threadID, http.StatusFound)
 	case store.ErrBanned:
 		s.setFlash(w, "error", "你已被频道禁言（可读不可写）。")
 		http.Redirect(w, r, "/threads/"+threadID, http.StatusFound)
 	case store.ErrThreadFull:
-		s.setFlash(w, "error", "留言板已达 5000 楼上限，请频道管理员创建后续留言板接续。")
+		s.setFlash(w, "error", "帖子已达 5000 楼上限，请频道管理员创建后续帖子接续。")
 		http.Redirect(w, r, "/threads/"+threadID, http.StatusFound)
 	default:
 		s.logger.Error("追加楼层失败", "err", err)
@@ -119,12 +119,12 @@ func (s *Server) redirectThreadError(w http.ResponseWriter, r *http.Request, thr
 	}
 }
 
-// pageThreadClose 关闭留言板（频道管理员）。
+// pageThreadClose 关闭帖子（频道管理员）。
 func (s *Server) pageThreadClose(w http.ResponseWriter, r *http.Request) {
 	s.threadStatusChange(w, r, model.ThreadStatusClosed)
 }
 
-// pageThreadReopen 重开留言板（频道管理员）。
+// pageThreadReopen 重开帖子（频道管理员）。
 func (s *Server) pageThreadReopen(w http.ResponseWriter, r *http.Request) {
 	s.threadStatusChange(w, r, model.ThreadStatusOpen)
 }
@@ -134,7 +134,7 @@ func (s *Server) threadStatusChange(w http.ResponseWriter, r *http.Request, stat
 	threadID := r.PathValue("id")
 	t, err := s.store.GetThreadByID(r.Context(), threadID)
 	if err != nil {
-		s.renderError(w, r, http.StatusNotFound, "留言板不存在。")
+		s.renderError(w, r, http.StatusNotFound, "帖子不存在。")
 		return
 	}
 	p, err := s.store.GetProjectByID(r.Context(), t.ProjectID)
@@ -147,7 +147,7 @@ func (s *Server) threadStatusChange(w http.ResponseWriter, r *http.Request, stat
 		return
 	}
 	if err := s.store.SetThreadStatus(r.Context(), threadID, status, u.ID); err != nil {
-		s.logger.Error("变更留言板状态失败", "err", err)
+		s.logger.Error("变更帖子状态失败", "err", err)
 		s.renderError(w, r, http.StatusInternalServerError, "服务暂时不可用，请稍后再试。")
 		return
 	}

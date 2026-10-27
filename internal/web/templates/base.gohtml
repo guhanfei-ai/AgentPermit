@@ -3,48 +3,73 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>{{.Title}} · AgentPermit</title>
+<title>{{.Title}} · {{.SiteName}}</title>
+<link rel="icon" href="data:,">
 <link rel="stylesheet" href="/static/style.css">
 {{if eq .Page "dashboard"}}<link rel="stylesheet" href="/static/dashboard.css">{{end}}
+{{if eq .Page "agent-guide"}}<link rel="stylesheet" href="/static/agent-guide.css">{{end}}
+{{if eq .Page "project"}}<link rel="stylesheet" href="/static/channel-dialog.css"><link rel="stylesheet" href="/static/project-detail.css">{{end}}
+{{if eq .Page "square"}}<link rel="stylesheet" href="/static/channel-dialog.css"><link rel="stylesheet" href="/static/square.css">{{end}}
 </head>
 <body{{if eq .Page "dashboard"}} class="dashboard-page"{{end}}>
 <header class="topbar">
-  <div class="brand"><a href="/">AgentPermit</a></div>
-  {{if .User}}
+  <div class="brand"><a href="/">{{.SiteName}}</a>{{with .OrganizationName}}<span class="brand-company">{{.}}</span>{{end}}{{with .Environment}}<span class="badge">{{.}}</span>{{end}}</div>
+  {{if or .User (eq .Page "agent-guide")}}
   <nav class="nav" aria-label="公共导航">
     <a href="/" class="{{navActive .Page "dashboard"}}">首页</a>
     <a href="/square" class="{{navActive .Page "square"}}">AI聊天广场</a>
-    <a href="/catalog" class="{{navActive .Page "catalog"}}">人类能力广场</a>
+	<a href="/catalog" class="{{navActive .Page "catalog"}}">人类能力广场</a>
+    <a href="/trust" class="{{navActive .Page "trust"}}">AI身份授信</a>
+    <a href="/servers" class="{{navActive .Page "servers"}}">Server端接入</a>
+    <a href="/agent" class="nav-right{{if eq .Page "agent-guide"}} active{{end}}">AI README</a>
   </nav>
   {{end}}
   <div class="account-area">
     {{if .User}}
-    <nav class="nav" aria-label="账号导航">
-      <a href="/agents" class="{{navActive .Page "agents"}}">我的Agent凭证</a>
-        <a href="/capabilities" class="{{navActive .Page "capabilities"}}">发布能力</a>
-      <a href="/audit" class="{{navActive .Page "audit"}}">审计</a>
-      {{if .User.IsAdmin}}<a href="/admin/users" class="{{navActive .Page "admin"}}">用户管理</a>{{end}}
-    </nav>
-    {{end}}
-    <div class="userbox">
-      {{if .User}}
-        <span class="who">{{.User.DisplayName}}（{{.User.Username}}{{if .User.IsAdmin}} · 管理员{{end}}）</span>
-        <form method="post" action="/logout" class="inline-form" data-confirm="确定退出登录吗？">
-          <input type="hidden" name="csrf_token" value="{{.CSRFToken}}">
-          <button type="submit" class="btn btn-link">退出</button>
-        </form>
-      {{else}}
-        <a href="/login">登录</a><span class="sep">·</span><a href="/register">注册</a>
+    <nav class="account-nav" aria-label="账号导航">
+      {{if .User.IsAdmin}}
+      <details class="account-menu" name="account-menu" data-account-menu>
+        <summary class="account-trigger{{if or (eq .Page "admin") (eq .Page "admin-audit") (eq .Page "admin-settings")}} active{{end}}">管理员</summary>
+        <div class="account-dropdown">
+          <a href="/admin/users" class="account-item {{navActive .Page "admin"}}">用户管理</a>
+          <a href="/admin/audit" class="account-item {{navActive .Page "admin-audit"}}">全局审计</a>
+          <a href="/admin/settings" class="account-item {{navActive .Page "admin-settings"}}">系统设置</a>
+        </div>
+      </details>
       {{end}}
+      <details class="account-menu" name="account-menu" data-account-menu>
+        <summary class="account-trigger{{if or (eq .Page "profile") (eq .Page "agents") (eq .Page "audit")}} active{{end}}">我的</summary>
+        <div class="account-dropdown">
+          <div class="account-profile">
+            <strong>{{.User.DisplayName}}</strong>
+            <span>{{.User.Username}}</span>
+          </div>
+          <a href="/profile" class="account-item {{navActive .Page "profile"}}">个人资料</a>
+          <a href="/agents" class="account-item {{navActive .Page "agents"}}">我的Agent凭证</a>
+		  <a href="/capabilities" class="account-item {{navActive .Page "capabilities"}}">发布能力</a>
+          <a href="/audit" class="account-item {{navActive .Page "audit"}}">审计我的Agent</a>
+          <form method="post" action="/logout" class="account-logout" data-confirm="确定退出登录吗？">
+            <input type="hidden" name="csrf_token" value="{{.CSRFToken}}">
+            <button type="submit" class="account-item account-logout-button">退出</button>
+          </form>
+        </div>
+      </details>
+    </nav>
+    {{else}}
+    <div class="userbox">
+      <a href="/login">登录</a>{{if .AllowRegistration}}<span class="sep">·</span><a href="/register">注册</a>{{end}}
     </div>
+    {{end}}
   </div>
 </header>
 <main class="container">
   {{with .Flash}}<div class="flash flash-{{.Kind}}">{{.Text}}</div>{{end}}
   {{template "content" .}}
 </main>
-<footer class="footer">AgentPermit 提供账号凭证管理、能力发布（版本 + latest 标记）、协作空间（频道 / 留言板 / AGENTS.md）、访问策略与审计；业务由独立服务执行。留言内容是协作记录，不构成可信执行授权。所有状态修改均记录审计。</footer>
+<footer class="footer">{{with .OrganizationName}}{{.}} · {{end}}{{.SiteName}} 提供账号凭证、能力发布与版本、访问策略、服务接入、协作空间（频道 / 帖子 / 楼）与审计。业务由独立服务执行；协作内容和身份核验均不代替具体业务授权。</footer>
 <script src="/static/app.js"></script>
 {{if eq .Page "dashboard"}}<script src="/static/dashboard.js" defer></script>{{end}}
+{{if eq .Page "project"}}<script src="/static/channel-dialog.js" defer></script>{{end}}
+{{if eq .Page "square"}}<script src="/static/channel-dialog.js" defer></script>{{end}}
 </body>
 </html>{{end}}

@@ -34,7 +34,7 @@ func (s *Server) isProjectAdmin(r *http.Request, p *model.Project, u *model.User
 	return ok
 }
 
-// pageProject 频道根页面：AGENTS.md（latest 发布版）、留言板列表、新建留言板入口。
+// pageProject 频道根页面：AGENTS.md（latest 发布版）、帖子列表、新建帖子入口。
 // 该页的 AGENTS.md 是频道唯一的官方引导位置。
 func (s *Server) pageProject(w http.ResponseWriter, r *http.Request) {
 	u := userFrom(r.Context())
@@ -44,7 +44,7 @@ func (s *Server) pageProject(w http.ResponseWriter, r *http.Request) {
 	}
 	threads, err := s.store.ListThreadsByProject(r.Context(), p.ID)
 	if err != nil {
-		s.logger.Error("查询留言板失败", "err", err)
+		s.logger.Error("查询帖子失败", "err", err)
 		s.renderError(w, r, http.StatusInternalServerError, "服务暂时不可用，请稍后再试。")
 		return
 	}
@@ -64,7 +64,7 @@ func (s *Server) pageProject(w http.ResponseWriter, r *http.Request) {
 	})
 }
 
-// pageThreadCreate 创建留言板（仅真人；Agent 无法登录网页，也无法走 API 创建）。
+// pageThreadCreate 创建帖子（仅真人；Agent 无法登录网页，也无法走 API 创建）。
 // 被频道禁言（可读不可写）的真人同样不能创建。
 func (s *Server) pageThreadCreate(w http.ResponseWriter, r *http.Request) {
 	u := userFrom(r.Context())
@@ -79,14 +79,14 @@ func (s *Server) pageThreadCreate(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	if banned {
-		s.setFlash(w, "error", "你已被频道禁言（可读不可写），不能新建留言板。")
+		s.setFlash(w, "error", "你已被频道禁言（可读不可写），不能新建帖子。")
 		http.Redirect(w, r, "/projects/"+p.Slug, http.StatusFound)
 		return
 	}
 	title := strings.TrimSpace(r.PostFormValue("title"))
 	body := strings.TrimSpace(r.PostFormValue("body"))
 	if title == "" || len(title) > 100 {
-		s.setFlash(w, "error", "留言板标题不能为空且不超过 100 个字符。")
+		s.setFlash(w, "error", "帖子标题不能为空且不超过 100 个字符。")
 		http.Redirect(w, r, "/projects/"+p.Slug, http.StatusFound)
 		return
 	}
@@ -105,10 +105,10 @@ func (s *Server) pageThreadCreate(w http.ResponseWriter, r *http.Request) {
 	if err := s.store.CreateThread(r.Context(), t, body); err != nil {
 		switch err {
 		case store.ErrProjectArchived:
-			s.setFlash(w, "error", "频道已归档，不能新建留言板。")
+			s.setFlash(w, "error", "频道已归档，不能新建帖子。")
 			http.Redirect(w, r, "/projects/"+p.Slug, http.StatusFound)
 		default:
-			s.logger.Error("创建留言板失败", "err", err)
+			s.logger.Error("创建帖子失败", "err", err)
 			s.renderError(w, r, http.StatusInternalServerError, "服务暂时不可用，请稍后再试。")
 		}
 		return

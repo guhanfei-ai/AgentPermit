@@ -7,21 +7,31 @@ package config
 
 import (
 	"fmt"
+	"net/netip"
 	"os"
 	"strconv"
+	"strings"
 	"time"
 )
 
 // Config 是平台服务器配置。全部字段均可通过环境变量覆盖。
 type Config struct {
-	ListenAddr        string        // AGENTPERMIT_LISTEN_ADDR，默认 127.0.0.1:8080
-	DBPath            string        // AGENTPERMIT_DB_PATH，默认 ./data/agentpermit.db
-	BaseURL           string        // AGENTPERMIT_BASE_URL，页面展示用，默认 http://127.0.0.1:8080
-	AllowRegistration bool          // AGENTPERMIT_ALLOW_REGISTRATION，默认 true（仅限本地演示）
-	SecureCookies     bool          // AGENTPERMIT_SECURE_COOKIES，默认 false（本地 HTTP 演示）
-	SessionTTL        time.Duration // AGENTPERMIT_SESSION_TTL，默认 24h
-	LogLevel          string        // AGENTPERMIT_LOG_LEVEL，默认 info
+	ListenAddr        string         // AGENTPERMIT_LISTEN_ADDR，默认 127.0.0.1:8080
+	DBPath            string         // AGENTPERMIT_DB_PATH，默认 ./data/agentpermit.db
+	BaseURL           string         // AGENTPERMIT_BASE_URL，页面展示用，默认 http://127.0.0.1:8080
+	AllowRegistration bool           // AGENTPERMIT_ALLOW_REGISTRATION，默认 true（仅限本地演示）
+	SecureCookies     bool           // AGENTPERMIT_SECURE_COOKIES，默认 false（本地 HTTP 演示）
+	SessionTTL        time.Duration  // AGENTPERMIT_SESSION_TTL，默认 24h
+	LogLevel          string         // AGENTPERMIT_LOG_LEVEL，默认 info
+	SiteName          string         // AGENTPERMIT_SITE_NAME，页面品牌
+	OrganizationName  string         // AGENTPERMIT_ORGANIZATION_NAME，可选展示名称
+	Environment       string         // AGENTPERMIT_ENV，空值保留旧客户端变量名
+	ServerAgentsPath  string         // AGENTPERMIT_AGENT_GUIDE_PATH，可选外置接入说明
+	UsageGuideURL     string         // AGENTPERMIT_USAGE_GUIDE_URL，可选使用规范入口
+	TrustedProxies    []netip.Prefix // AGENTPERMIT_TRUSTED_PROXIES，默认不信任转发头
 }
+
+const DefaultSiteName = "AgentPermit"
 
 // DefaultDBPath 新部署的默认数据库路径。
 const DefaultDBPath = "./data/agentpermit.db"
@@ -36,7 +46,7 @@ func ResolveDBPath(configured string) (string, bool) {
 	if configured == legacyDBPath {
 		return legacyDBPath, false
 	}
-	if configured != DefaultDBPath {
+	if configured != DefaultDBPath || envStr("DB_PATH", "") != "" {
 		return configured, false // 用户显式指定的其他路径
 	}
 	if fileExists(legacyDBPath) && !fileExists(DefaultDBPath) {
@@ -61,7 +71,25 @@ func Load() Config {
 		SecureCookies:     envBool("SECURE_COOKIES", false),
 		SessionTTL:        envDuration("SESSION_TTL", 24*time.Hour),
 		LogLevel:          envStr("LOG_LEVEL", "info"),
+		SiteName:          envStr("SITE_NAME", DefaultSiteName),
+		OrganizationName:  envStr("ORGANIZATION_NAME", ""),
+		Environment:       normalizeEnvironment(envStr("ENV", "")),
+		ServerAgentsPath:  strings.TrimSpace(envStr("AGENT_GUIDE_PATH", "")),
+		UsageGuideURL:     strings.TrimSpace(envStr("USAGE_GUIDE_URL", "")),
+		TrustedProxies:    trustedProxies(),
 	}
+}
+
+func trustedProxies() []netip.Prefix {
+	var prefixes []netip.Prefix
+	for _, raw := range strings.FieldsFunc(envStr("TRUSTED_PROXIES", ""), func(r rune) bool { return r == ',' || r == ' ' }) {
+		prefix, err := netip.ParsePrefix(raw)
+		if err != nil {
+			panic(fmt.Sprintf("AGENTPERMIT_TRUSTED_PROXIES 包含无效 CIDR %q", raw))
+		}
+		prefixes = append(prefixes, prefix)
+	}
+	return prefixes
 }
 
 // envStr 读取配置：AGENTPERMIT_ 前缀优先，AAD_ 前缀为兼容别名。

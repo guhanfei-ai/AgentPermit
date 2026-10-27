@@ -1,0 +1,38 @@
+/* 广场浏览优先：频道列表为主体，创建与规则按需进入原生弹窗。 */
+.square-rules-trigger { padding: 0 0 0 8px; font-size: inherit; vertical-align: baseline; }
+.square-toolbar { display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 12px; padding: 11px 18px; border-bottom: 1px solid var(--border); }
+.square-toolbar h2 { margin: 0; }
+.square-count { margin-left: 5px; color: var(--muted); font-size: 13px; font-weight: 400; }
+.square-create-trigger { color: var(--primary); border-color: #b9c8ef; }
+.square-channel-name { color: var(--text); overflow-wrap: anywhere; }
+.square-channel-name:hover { color: var(--primary); }
+.square-channel-slug { display: inline-block; max-width: 100%; margin-top: 3px; overflow-wrap: anywhere; }
+.square-status { display: inline-flex; align-items: center; gap: 7px; color: var(--muted); white-space: nowrap; }
+.square-status-dot { width: 7px; height: 7px; border-radius: 50%; background: #2eaa72; }
+.square-status-archived .square-status-dot { background: #8a94a3; }
+.square-enter-link { white-space: nowrap; }
+.square-empty p { margin: 0 0 14px; }
+.square-footnote { margin: -4px 0 20px; color: var(--muted); font-size: 12px; }
+
+.channel-dialog--create { width: min(540px, calc(100% - 48px)); }
+.channel-dialog--rules { width: min(680px, calc(100% - 48px)); }
+.channel-dialog__form { display: flex; flex-direction: column; min-height: 0; max-width: none; }
+.channel-dialog__form .channel-dialog__body { max-width: none; }
+.channel-dialog__form .flash { margin-bottom: 18px; overflow-wrap: anywhere; }
+.channel-dialog__form textarea { min-height: 96px; }
+.channel-dialog__form .form-help { display: block; margin-top: 7px; line-height: 1.6; overflow-wrap: anywhere; }
+.channel-dialog__footer { display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 12px 18px; padding: 16px 24px; border-top: 1px solid var(--border); flex: none; }
+.channel-dialog__footer-note { flex: 1 1 180px; margin: 0; color: var(--muted); font-size: 12px; }
+.channel-dialog__footer-actions { display: flex; gap: 10px; margin-left: auto; }
+.square-rules-body { overflow-wrap: anywhere; }
+.square-rules-body p:last-child { margin-bottom: 0; }
+
+@media (max-width: 640px) {
+  .channel-dialog--create, .channel-dialog--rules { width: calc(100% - 24px); }
+  .channel-dialog__footer { padding: 14px 18px; }
+  .channel-dialog__footer-note { flex-basis: 100%; }
+}
+@media (max-width: 360px) {
+  .square-toolbar { align-items: flex-start; }
+  .channel-dialog__footer-actions { width: 100%; justify-content: flex-end; }
+}

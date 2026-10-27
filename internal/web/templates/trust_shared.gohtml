@@ -1,0 +1,37 @@
+{{define "trust-pagination"}}
+<nav class="trust-pagination" aria-label="清单分页">
+  <span class="muted">共 {{.Total}} 条 · 第 {{.Page}} / {{.Pages}} 页</span>
+  {{if .Prev}}<a class="btn btn-small" href="{{.Prev}}">上一页</a>{{end}}
+  {{if .Next}}<a class="btn btn-small" href="{{.Next}}">下一页</a>{{end}}
+</nav>
+{{end}}
+
+{{define "server-fields"}}
+<div class="grid-2">
+  <label>Server名称<input name="name" type="text" required maxlength="128" value="{{.Server.Name}}"></label>
+  <label>类型<select name="kind">{{range .Kinds}}<option {{if eq . $.Server.Kind}}selected{{end}}>{{.}}</option>{{end}}</select></label>
+  <label>环境<input name="environment" type="text" required maxlength="64" placeholder="例如：生产、测试" value="{{.Server.Environment}}"></label>
+  <label>接入地址（origin）<input name="origin" type="text" required maxlength="500" placeholder="https://service.example.com" value="{{.Server.Origin}}"></label>
+  <label>负责人<select name="owner_user_id" required>{{range .Users}}<option value="{{.ID}}" {{if eq .ID $.Server.OwnerUserID}}selected{{end}}>{{.DisplayName}}（{{.Username}}）</option>{{end}}</select></label>
+  <label>状态<select name="status"><option value="active" {{if eq .Server.Status "active"}}selected{{end}}>启用</option><option value="disabled" {{if eq .Server.Status "disabled"}}selected{{end}}>停用</option></select></label>
+</div>
+<label>用途说明<textarea name="description" maxlength="1000" rows="3">{{.Server.Description}}</textarea></label>
+{{end}}
+
+{{define "trust-ban-table"}}
+<section class="card table-panel trust-section">
+ <h2>{{.Title}}</h2>
+ <div class="table-scroll"><table class="responsive-table">
+ <thead><tr><th>对象 / 规则</th><th>适用范围</th><th>原因</th><th>封禁人</th><th>生效 / 截止（北京时间）</th><th>操作</th></tr></thead>
+ <tbody>{{range .List.Items}}<tr>
+  <td data-label="对象 / 规则"><a href="/trust/bans/{{.ID}}">{{.Name}}</a>{{if not .ReleasedAt.IsZero}}<br><span class="badge">已解除</span>{{end}}</td>
+  <td data-label="适用范围">{{with .UserName}}人员：{{.}}<br>{{end}}{{with .CredentialName}}AI：{{.}}<br>{{end}}{{with .ServerName}}Server：{{.}}<br>{{end}}{{with .Environment}}环境：{{.}}{{end}}</td>
+  <td data-label="原因">{{.Reason}}</td><td data-label="封禁人">{{.CreatorName}}</td>
+  <td data-label="生效 / 截止（北京时间）">{{trustTime .StartsAt}}<br>{{if .ExpiresAt.IsZero}}长期{{else}}{{trustTime .ExpiresAt}}{{end}}</td>
+  <td class="actions" data-label="操作"><a href="/trust/bans/{{.ID}}" class="btn btn-small">详情{{if eq .Kind "condition"}} / 编辑{{end}}</a>
+   {{if .ReleasedAt.IsZero}}<form method="post" action="/trust/bans/{{.ID}}/release" class="inline-form" data-confirm="解除本条封禁？其他封禁继续生效。"><input type="hidden" name="csrf_token" value="{{$.CSRF}}"><button class="btn btn-small">{{if eq .Kind "condition"}}停用{{else}}解除封禁{{end}}</button></form>{{end}}
+  </td>
+ </tr>{{else}}<tr class="empty-row"><td colspan="6" class="empty">暂无记录。</td></tr>{{end}}</tbody>
+ </table></div>{{template "trust-pagination" .List}}
+</section>
+{{end}}

@@ -1,0 +1,19 @@
+{{define "content"}}
+<div class="page-head"><h1>Server端接入</h1>{{if .User.IsAdmin}}<button class="btn btn-primary" type="button" data-trust-open="server-create">登记Server</button>{{end}}</div>
+<p class="page-description">已接入Server全貌清单。服务按接入身份和环境登记，每个受管请求都向AgentPermit核验；有效注册用户的Agent可统一使用已启用的入口，修改登记与轮换密钥由管理员负责。</p>
+<section class="card table-panel server-list">
+ <form method="get" class="inline-fields"><input type="text" name="q" value="{{.Data.Query}}" aria-label="搜索Server" placeholder="搜索名称、标识或用途"><input type="text" name="environment" value="{{.Data.Environment}}" aria-label="筛选环境" placeholder="环境"><button class="btn">查询</button></form>
+ <div class="table-scroll"><table class="responsive-table"><thead><tr><th>Server / 标识</th><th>类型 / 用途</th><th>环境 / 地址</th><th>负责人</th><th>状态</th><th>登记 / 最近核验</th><th>操作</th></tr></thead><tbody>
+ {{range .Data.Servers.Items}}<tr>
+ <td data-label="Server / 标识"><a href="/servers/{{.ID}}">{{.Name}}</a><br><code class="credential-id">{{.ID}}</code></td>
+ <td data-label="类型 / 用途">{{.Kind}}<br><span class="muted">{{.Description}}</span></td><td data-label="环境 / 地址">{{.Environment}}<br><span class="muted">{{.Origin}}</span></td><td data-label="负责人">{{.OwnerName}}</td>
+ <td data-label="状态"><span class="badge {{if eq .Status "active"}}ok{{else}}dead{{end}}">{{if eq .Status "active"}}启用{{else}}停用{{end}}</span></td>
+ <td data-label="登记 / 最近核验">{{trustTime .CreatedAt}}<br>{{trustTime .LastCheckedAt}}</td><td class="actions" data-label="操作">{{if $.User.IsAdmin}}<a class="btn btn-small" href="/servers/{{.ID}}#edit">编辑</a> <a class="btn btn-small" href="/servers/{{.ID}}#edit">调整</a>{{end}} <a class="btn btn-small" href="/servers/{{.ID}}">详情</a></td>
+ </tr>{{else}}<tr class="empty-row"><td colspan="7" class="empty">暂无可见的Server接入记录。</td></tr>{{end}}</tbody></table></div>
+ {{template "trust-pagination" .Data.Servers}}
+</section>
+{{if .User.IsAdmin}}<dialog id="server-create" class="trust-dialog" aria-labelledby="server-create-title"><div class="trust-dialog-head"><h2 id="server-create-title">登记Server</h2><button type="button" class="btn" data-trust-close>关闭</button></div>
+ <form method="post" action="/servers" class="form"><input type="hidden" name="csrf_token" value="{{.CSRFToken}}">{{template "server-fields" .Data}}<button class="btn btn-primary">登记并生成接入凭证</button></form>
+</dialog>{{end}}
+<link rel="stylesheet" href="/static/trust.css"><script src="/static/trust.js" defer></script>
+{{end}}

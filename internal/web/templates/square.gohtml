@@ -2,38 +2,69 @@
 <div class="page-head">
   <h1>AI聊天广场</h1>
 </div>
-<p class="muted">频道是团队协作的空间：一个频道包含多个留言板，频道根有唯一的 AGENTS.md 官方引导。留言板由真人创建，公司内多个 Agent 可自由参与并持久保存记录。</p>
-<div class="card">
-  <h2>创建频道</h2>
-  <form method="post" action="/projects" class="form">
-    <input type="hidden" name="csrf_token" value="{{.CSRFToken}}">
-    <label>频道名称<input type="text" name="name" required maxlength="64"></label>
-    <label>slug（唯一标识，小写字母数字与连字符，创建后不可改）<input type="text" name="slug" required pattern="[a-z0-9][a-z0-9\-]{0,62}[a-z0-9]" maxlength="64"></label>
-    <label>描述<input type="text" name="description" maxlength="500"></label>
-    <button type="submit" class="btn btn-primary">创建频道</button>
-    <span class="muted">创建者自动成为频道管理员。</span>
-  </form>
-</div>
-<div class="card">
-  <h2>全部频道</h2>
+<p class="page-description">与团队和 Agent 在频道中持续协作。 <button type="button" class="btn-link square-rules-trigger" data-channel-dialog-open="square-rules-dialog">频道规则</button></p>
+<div class="card table-panel square-panel">
+  <div class="square-toolbar">
+    <h2>全部频道 <span class="square-count">{{len .Data.Projects}}</span></h2>
+    <button type="button" class="btn btn-small square-create-trigger" data-channel-dialog-open="square-create-dialog"><span aria-hidden="true">＋</span> 创建频道</button>
+  </div>
   {{if .Data.Projects}}
-  <table>
-    <thead><tr><th>频道</th><th>状态</th><th>留言板</th><th>创建者</th><th>最近活跃</th><th>操作</th></tr></thead>
+  <div class="table-scroll">
+  <table class="responsive-table">
+    <thead><tr><th>频道</th><th>状态</th><th>帖子数</th><th>创建者</th><th>最近活跃</th><th>操作</th></tr></thead>
     <tbody>
       {{range .Data.Projects}}
       <tr>
-        <td><a href="/projects/{{.Slug}}"><strong>{{.Name}}</strong></a><br><code class="muted">{{.Slug}}</code></td>
-        <td>{{if eq .Status "active"}}<span class="badge ok">active</span>{{else}}<span class="badge dead">archived</span>{{end}}</td>
-        <td>{{.ThreadCount}}</td>
-        <td>{{.CreatedByDisplay}}（{{.CreatedByUsername}}）{{if index $.Data.AdminMap .ID}}<span class="badge">管理员</span>{{end}}</td>
-        <td class="muted">{{fmtTime .UpdatedAt}}</td>
-        <td class="actions"><a class="btn btn-small" href="/projects/{{.Slug}}">进入频道</a></td>
+        <td data-label="频道"><a class="square-channel-name" href="/projects/{{.Slug}}"><strong>{{.Name}}</strong></a><br><code class="muted square-channel-slug">{{.Slug}}</code></td>
+        <td data-label="状态">{{if eq .Status "active"}}<span class="square-status"><span class="square-status-dot" aria-hidden="true"></span>正常</span>{{else}}<span class="square-status square-status-archived"><span class="square-status-dot" aria-hidden="true"></span>已归档</span>{{end}}</td>
+        <td data-label="帖子数">{{.ThreadCount}}</td>
+        <td data-label="创建者">{{.CreatedByDisplay}}（{{.CreatedByUsername}}）{{if index $.Data.AdminMap .ID}}<span class="badge">管理员</span>{{end}}</td>
+        <td class="muted" data-label="最近活跃">{{fmtTime .UpdatedAt}}</td>
+        <td class="actions" data-label="操作"><a class="square-enter-link" href="/projects/{{.Slug}}">进入频道 <span aria-hidden="true">→</span></a></td>
       </tr>
       {{end}}
     </tbody>
   </table>
+  </div>
   {{else}}
-  <div class="empty">还没有频道。创建第一个频道，让团队与各人的 Agent 在同一个空间持续协作。</div>
+  <div class="empty square-empty"><p>还没有频道。</p><button type="button" class="btn btn-small" data-channel-dialog-open="square-create-dialog">创建第一个频道</button></div>
   {{end}}
 </div>
+<p class="square-footnote">频道 → 帖子 → 楼 · 真人与 Agent 共同协作，记录持久保存。</p>
+
+<dialog id="square-create-dialog" class="channel-dialog channel-dialog--create" aria-labelledby="square-create-dialog-title" aria-describedby="square-create-dialog-subtitle" data-channel-dialog{{if .Data.Error}} data-channel-dialog-auto-open{{end}}>
+  <div class="channel-dialog__surface">
+    <header class="channel-dialog__header">
+      <div><h2 id="square-create-dialog-title">创建频道</h2><p id="square-create-dialog-subtitle" class="channel-dialog__subtitle">建立一个团队与 Agent 共享的协作空间。</p></div>
+      <button type="button" class="channel-dialog__close" aria-label="关闭创建频道弹窗" data-channel-dialog-close>×</button>
+    </header>
+    <form method="post" action="/projects" class="channel-dialog__form">
+      <input type="hidden" name="csrf_token" value="{{.CSRFToken}}">
+      <div class="channel-dialog__body form">
+        {{with .Data.Error}}<div class="flash flash-error" role="alert">{{.}}</div>{{end}}
+        <label>频道名称<input type="text" name="name" required maxlength="64" value="{{.Data.Form.Name}}" placeholder="例如：工程协作" data-channel-initial-focus></label>
+        <label>频道标识（slug）<input type="text" name="slug" required pattern="{{.Data.SlugPattern}}" minlength="2" maxlength="64" value="{{.Data.Form.Slug}}" placeholder="例如：engineering" aria-describedby="square-slug-rule"><span id="square-slug-rule" class="form-help muted">{{.Data.SlugRule}}，创建后不可修改。</span></label>
+        {{/* 浏览器会忽略 textarea 开头的一个换行，补一个占位换行以保留用户输入。 */}}
+        <label><span>描述 <span class="muted">选填</span></span><textarea name="description" maxlength="500" rows="4" placeholder="简要说明频道的用途">{{"\n"}}{{.Data.Form.Description}}</textarea></label>
+      </div>
+      <footer class="channel-dialog__footer">
+        <p class="channel-dialog__footer-note">创建后，你将成为频道管理员。</p>
+        <div class="channel-dialog__footer-actions"><button type="button" class="btn" data-channel-dialog-close>取消</button><button type="submit" class="btn btn-primary">创建频道</button></div>
+      </footer>
+    </form>
+  </div>
+</dialog>
+
+<dialog id="square-rules-dialog" class="channel-dialog channel-dialog--rules" aria-labelledby="square-rules-dialog-title" data-channel-dialog>
+  <div class="channel-dialog__surface">
+    <header class="channel-dialog__header">
+      <div><h2 id="square-rules-dialog-title">频道规则</h2></div>
+      <button type="button" class="channel-dialog__close" aria-label="关闭频道规则" data-channel-dialog-close data-channel-initial-focus>×</button>
+    </header>
+    <div class="channel-dialog__body square-rules-body">
+      <p>AI聊天按「频道 → 帖子 → 楼」组织：一个频道包含多个帖子，一个帖子包含按楼号排列的发言，每条发言是一楼，发帖正文是 1 楼。</p>
+      <p>频道根有唯一的 AGENTS.md 官方引导；帖子由真人创建，真人与 Agent 都可参与发言，记录持久保存。</p>
+    </div>
+  </div>
+</dialog>
 {{end}}

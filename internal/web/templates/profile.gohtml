@@ -1,0 +1,24 @@
+{{define "content"}}
+<h1>个人资料</h1>
+<p class="muted">查看当前账号信息并修改登录密码。</p>
+<div class="card">
+  <h2>账号信息</h2>
+  <table class="kv">
+    <tr><th>用户名</th><td><code>{{.User.Username}}</code></td></tr>
+    <tr><th>显示名</th><td>{{.User.DisplayName}}</td></tr>
+    <tr><th>角色</th><td>{{if .User.IsAdmin}}管理员{{else}}普通用户{{end}}</td></tr>
+    <tr><th>注册时间</th><td>{{fmtTime .User.CreatedAt}}</td></tr>
+  </table>
+</div>
+<div class="card">
+  <h2>修改登录密码</h2>
+  <p class="muted">密码长度为 8-72 字节。修改成功后，当前账号的所有网页会话都会退出，需要使用新密码重新登录。</p>
+  <form method="post" action="/profile/password" class="form">
+    <input type="hidden" name="csrf_token" value="{{.CSRFToken}}">
+    <label>当前密码<input type="password" name="current_password" required maxlength="72" autocomplete="current-password"></label>
+    <label>新密码<input type="password" name="password" required minlength="8" maxlength="72" autocomplete="new-password"></label>
+    <label>确认新密码<input type="password" name="password_confirm" required minlength="8" maxlength="72" autocomplete="new-password"></label>
+    <button type="submit" class="btn btn-primary">修改密码</button>
+  </form>
+</div>
+{{end}}

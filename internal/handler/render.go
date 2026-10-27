@@ -1,6 +1,7 @@
 package handler
 
 import (
+	"bytes"
 	"encoding/base64"
 	"encoding/json"
 	"fmt"
@@ -28,12 +29,17 @@ type Flash struct {
 
 // PageData 是所有页面模板的根数据。
 type PageData struct {
-	Title     string
-	Page      string // 导航高亮 key
-	User      *model.User
-	CSRFToken string
-	Flash     *Flash
-	Data      any
+	Title             string
+	Page              string // 导航高亮 key
+	User              *model.User
+	CSRFToken         string
+	Flash             *Flash
+	Data              any
+	SiteName          string
+	OrganizationName  string
+	Environment       string
+	ClientEnvPrefix   string
+	AllowRegistration bool
 }
 
 func (s *Server) setCookie(w http.ResponseWriter, name, value string, maxAge int) {
@@ -53,18 +59,24 @@ func (s *Server) renderPage(w http.ResponseWriter, r *http.Request, status int, 
 	u := userFrom(r.Context())
 	csrf := s.csrfTokenFor(r, u)
 	pd := PageData{Title: title, Page: pageKey, User: u, CSRFToken: csrf, Flash: popFlash(w, r), Data: data}
+	pd.SiteName, pd.OrganizationName = s.cfg.SiteName, s.cfg.OrganizationName
+	pd.Environment, pd.ClientEnvPrefix = s.cfg.Environment, s.cfg.ClientEnvName("")
+	pd.AllowRegistration = s.cfg.AllowRegistration
 	t, ok := s.tmpl[page]
 	if !ok {
 		s.logger.Error("模板不存在", "page", page)
 		http.Error(w, "内部错误", http.StatusInternalServerError)
 		return
 	}
+	var body bytes.Buffer
+	if err := t.ExecuteTemplate(&body, "base", pd); err != nil {
+		s.logger.Error("渲染模板失败", "page", page, "err", err)
+		http.Error(w, "页面暂不可用", http.StatusInternalServerError)
+		return
+	}
 	w.Header().Set("Content-Type", "text/html; charset=utf-8")
 	w.WriteHeader(status)
-	if err := t.ExecuteTemplate(w, "base", pd); err != nil {
-		// 半写出状态只记录日志
-		s.logger.Error("渲染模板失败", "page", page, "err", err)
-	}
+	w.Write(body.Bytes())
 }
 
 // renderError 渲染通用错误页。
@@ -138,13 +150,24 @@ type jsonErrorBody struct {
 }
 
 type jsonErrorDetail struct {
-	Code    string `json:"code"`
-	Message string `json:"message"`
+	Code          string `json:"code"`
+	Message       string `json:"message"`
+	AIInstruction string `json:"ai_instruction,omitempty"`
+	Retryable     *bool  `json:"retryable,omitempty"`
 }
 
 func (s *Server) jsonError(w http.ResponseWriter, r *http.Request, status int, code, message string) {
+	detail := jsonErrorDetail{Code: code, Message: message, AIInstruction: errorAIInstruction(code)}
+	if detail.AIInstruction != "" {
+		retryable := false
+		detail.Retryable = &retryable
+	}
+	s.writeJSONError(w, r, status, detail)
+}
+
+func (s *Server) writeJSONError(w http.ResponseWriter, r *http.Request, status int, detail jsonErrorDetail) {
 	writeJSON(w, r, status, jsonErrorBody{
-		Error:     jsonErrorDetail{Code: code, Message: message},
+		Error:     detail,
 		RequestID: requestIDFrom(r.Context()),
 	})
 }

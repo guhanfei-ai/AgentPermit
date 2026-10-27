@@ -1,10 +1,11 @@
 package handler
 
 import (
+	"fmt"
 	"net/http"
 	"regexp"
 	"strings"
-	"time"
+	"unicode/utf8"
 
 	"agentpermit/internal/auth"
 	"agentpermit/internal/model"
@@ -12,6 +13,28 @@ import (
 )
 
 var usernamePattern = regexp.MustCompile(`^[A-Za-z0-9_-]{3,32}$`)
+
+// validateNewUser 供公开注册和管理员开户共用，角色由各入口固定，不能由表单指定。
+func validateNewUser(username, displayName, password, confirm string) string {
+	if !usernamePattern.MatchString(username) {
+		return "用户名仅允许字母、数字、下划线、连字符，长度 3-32。"
+	}
+	if displayName == "" || utf8.RuneCountInString(displayName) > 64 {
+		return "显示名不能为空且不超过 64 个字符。"
+	}
+	return validateNewPassword(password, confirm)
+}
+
+func validateNewPassword(password, confirm string) string {
+	// bcrypt 的密码上限是 72 字节；提前返回明确提示，避免开户时变成内部错误。
+	if len(password) < auth.MinPasswordLen || len(password) > auth.MaxPasswordLen {
+		return fmt.Sprintf("密码长度须为 %d-%d 字节，中文等字符会占用多个字节。", auth.MinPasswordLen, auth.MaxPasswordLen)
+	}
+	if password != confirm {
+		return "两次输入的密码不一致。"
+	}
+	return ""
+}
 
 // clientIP 不信任 X-Forwarded-For，仅取 RemoteAddr（限流 key 用）。
 func clientIP(r *http.Request) string {
@@ -27,47 +50,20 @@ func (s *Server) pageLogin(w http.ResponseWriter, r *http.Request) {
 		http.Redirect(w, r, "/", http.StatusFound)
 		return
 	}
-	s.renderPage(w, r, http.StatusOK, "login", "登录", "", map[string]any{"AllowRegistration": s.cfg.AllowRegistration})
+	s.renderPage(w, r, http.StatusOK, "login", "登录", "", nil)
 }
 
 func (s *Server) pageLoginSubmit(w http.ResponseWriter, r *http.Request) {
-	if !s.limiter.Allow("login:" + clientIP(r)) {
-		s.renderError(w, r, http.StatusTooManyRequests, "尝试过于频繁，请稍后再试。")
+	_, failure := s.loginWithPassword(w, r, r.PostFormValue("username"), r.PostFormValue("password"))
+	if failure != nil {
+		if failure.code == "invalid_credentials" {
+			s.setFlash(w, "error", failure.message)
+			http.Redirect(w, r, "/login", http.StatusFound)
+			return
+		}
+		s.renderError(w, r, failure.status, failure.message)
 		return
 	}
-	username := strings.TrimSpace(r.PostFormValue("username"))
-	password := r.PostFormValue("password")
-
-	u, err := s.store.GetUserByUsername(r.Context(), username)
-	// 统一错误提示，不区分用户不存在与密码错误
-	if err == store.ErrNotFound || !auth.CheckPassword(u.PasswordHash, password) {
-		s.audit(r, &model.AuditLog{Event: "login_failed", Outcome: "failure", Reason: "bad_credentials", Detail: truncate(username, 32)})
-		s.setFlash(w, "error", "用户名或密码错误")
-		http.Redirect(w, r, "/login", http.StatusFound)
-		return
-	}
-	if err != nil {
-		s.logger.Error("查询用户失败", "err", err)
-		s.renderError(w, r, http.StatusInternalServerError, "服务暂时不可用，请稍后再试。")
-		return
-	}
-	if !u.IsActive() {
-		s.audit(r, &model.AuditLog{Event: "login_failed", ActorUserID: u.ID, Outcome: "failure", Reason: "user_disabled"})
-		s.renderError(w, r, http.StatusForbidden, "账号已被禁用，请联系管理员。")
-		return
-	}
-
-	// 登录成功：新建 Session（防 Session 固定），Cookie 只放高熵随机 Token
-	sessionToken := auth.SessionTokenPrefix + auth.NewRandomHex(32)
-	csrfToken := auth.NewRandomHex(16)
-	expires := time.Now().Add(s.cfg.SessionTTL)
-	if err := s.store.CreateSession(r.Context(), auth.HashToken(sessionToken), u.ID, csrfToken, expires); err != nil {
-		s.logger.Error("创建会话失败", "err", err)
-		s.renderError(w, r, http.StatusInternalServerError, "服务暂时不可用，请稍后再试。")
-		return
-	}
-	s.setCookie(w, cookieSession, sessionToken, int(s.cfg.SessionTTL.Seconds()))
-	s.audit(r, &model.AuditLog{Event: "login_success", ActorUserID: u.ID})
 	http.Redirect(w, r, "/", http.StatusFound)
 }
 
@@ -103,20 +99,8 @@ func (s *Server) pageRegisterSubmit(w http.ResponseWriter, r *http.Request) {
 		s.setFlash(w, "error", msg)
 		http.Redirect(w, r, "/register", http.StatusFound)
 	}
-	if !usernamePattern.MatchString(username) {
-		fail("用户名仅允许字母、数字、下划线、连字符，长度 3-32。")
-		return
-	}
-	if displayName == "" || len(displayName) > 64 {
-		fail("显示名不能为空且不超过 64 个字符。")
-		return
-	}
-	if len(password) < 8 || len(password) > 128 {
-		fail("密码长度至少 8 位。")
-		return
-	}
-	if password != confirm {
-		fail("两次输入的密码不一致。")
+	if msg := validateNewUser(username, displayName, password, confirm); msg != "" {
+		fail(msg)
 		return
 	}
 
@@ -148,15 +132,9 @@ func (s *Server) pageRegisterSubmit(w http.ResponseWriter, r *http.Request) {
 }
 
 func (s *Server) pageLogout(w http.ResponseWriter, r *http.Request) {
-	u := userFrom(r.Context())
-	if sess := sessionFrom(r.Context()); sess != nil {
-		if err := s.store.RevokeSession(r.Context(), sess.TokenHash); err != nil {
-			s.logger.Error("撤销会话失败", "err", err)
-		}
-	}
-	s.setCookie(w, cookieSession, "", -1)
-	if u != nil {
-		s.audit(r, &model.AuditLog{Event: "logout", ActorUserID: u.ID})
+	if err := s.logoutSession(w, r); err != nil {
+		s.renderError(w, r, http.StatusInternalServerError, "服务暂时不可用，请稍后再试。")
+		return
 	}
 	s.setFlash(w, "success", "已退出登录。")
 	http.Redirect(w, r, "/login", http.StatusFound)

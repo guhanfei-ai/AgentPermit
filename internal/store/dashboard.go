@@ -163,7 +163,7 @@ func dashboardEventTitle(event string) string {
 	case "project_created":
 		return "创建频道"
 	case "thread_created":
-		return "创建留言板"
+		return "创建帖子"
 	default:
 		return "管理操作"
 	}

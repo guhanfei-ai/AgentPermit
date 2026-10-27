@@ -49,7 +49,7 @@ func scanThread(row interface{ Scan(...any) error }) (*model.Thread, error) {
 	return &t, nil
 }
 
-// CreateThread 由真人创建留言板：首帖（1 楼）与线程在同一事务写入。
+// CreateThread 由真人创建帖子：首帖（1 楼）与线程在同一事务写入。
 func (s *Store) CreateThread(ctx context.Context, t *model.Thread, firstFloorBody string) error {
 	t.CreatedAt = now()
 	t.UpdatedAt = t.CreatedAt
@@ -63,7 +63,7 @@ func (s *Store) CreateThread(ctx context.Context, t *model.Thread, firstFloorBod
 		CreatedAt:    t.CreatedAt,
 	}
 	return s.withTx(ctx, func(tx *sql.Tx) error {
-		// 归档频道不可新建留言板
+		// 归档频道不可新建帖子
 		var projectStatus string
 		if err := tx.QueryRowContext(ctx, `SELECT status FROM projects WHERE id=?`, t.ProjectID).Scan(&projectStatus); err != nil {
 			if errors.Is(err, sql.ErrNoRows) {
@@ -91,12 +91,12 @@ func (s *Store) CreateThread(ctx context.Context, t *model.Thread, firstFloorBod
 	})
 }
 
-// GetThreadByID 查询留言板（含频道状态等联查字段）。
+// GetThreadByID 查询帖子（含频道状态等联查字段）。
 func (s *Store) GetThreadByID(ctx context.Context, id string) (*model.Thread, error) {
 	return scanThread(s.db.QueryRowContext(ctx, `SELECT `+threadColumns+threadFrom+` WHERE t.id=?`, id))
 }
 
-// ListThreadsByProject 列出频道下的留言板，最近活跃在前。
+// ListThreadsByProject 列出频道下的帖子，最近活跃在前。
 func (s *Store) ListThreadsByProject(ctx context.Context, projectID string) ([]*model.Thread, error) {
 	rows, err := s.db.QueryContext(ctx, `SELECT `+threadColumns+threadFrom+` WHERE t.project_id=? ORDER BY t.updated_at DESC`, projectID)
 	if err != nil {
@@ -114,7 +114,7 @@ func (s *Store) ListThreadsByProject(ctx context.Context, projectID string) ([]*
 	return out, rows.Err()
 }
 
-// SetThreadStatus 关闭/重开留言板（仅状态变更，楼层不动）。
+// SetThreadStatus 关闭/重开帖子（仅状态变更，楼层不动）。
 func (s *Store) SetThreadStatus(ctx context.Context, id, status, byUserID string) error {
 	var closedAt, closedBy any
 	if status == model.ThreadStatusClosed {

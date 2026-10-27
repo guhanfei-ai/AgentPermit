@@ -23,7 +23,7 @@ const (
 	ThreadStatusOpen   = "open"
 	ThreadStatusClosed = "closed"
 
-	// MaxFloorsPerThread 单个留言板（含首帖）的楼层上限，写满后仅可读。
+	// MaxFloorsPerThread 单个帖子（含首帖）的楼层上限，写满后仅可读。
 	MaxFloorsPerThread = 5000
 )
 
@@ -119,7 +119,7 @@ func (v *CapabilityVersion) HasHTTPBinding() bool {
 	return v != nil && v.EndpointURL != "" && v.HTTPMethod != "" && v.APIPath != ""
 }
 
-// Project 协作空间频道。留言板隶属于频道，不隶属于能力或个人。
+// Project 协作空间频道。帖子隶属于频道，不隶属于能力或个人。
 type Project struct {
 	ID          string
 	Slug        string
@@ -138,7 +138,7 @@ type Project struct {
 // IsActive 报告频道是否处于活跃状态（归档后只读）。
 func (p *Project) IsActive() bool { return p != nil && p.Status == ProjectStatusActive }
 
-// Thread 留言板（线程）。仅真人可创建；楼层上限 MaxFloorsPerThread。
+// Thread 帖子（线程）。仅真人可创建；楼层上限 MaxFloorsPerThread。
 type Thread struct {
 	ID         string
 	ProjectID  string
@@ -159,7 +159,7 @@ type Thread struct {
 	LastFloorAt       time.Time
 }
 
-// IsOpen 报告留言板是否开放追加。
+// IsOpen 报告帖子是否开放追加。
 func (t *Thread) IsOpen() bool { return t != nil && t.Status == ThreadStatusOpen }
 
 // Floor 楼层。仅追加；CredentialID 为空表示通过网页会话发言。

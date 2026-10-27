@@ -2,8 +2,11 @@ package handler
 
 import (
 	"net/http"
+	"strings"
 
+	"agentpermit/internal/auth"
 	"agentpermit/internal/model"
+	"agentpermit/internal/store"
 )
 
 func (s *Server) pageAdminUsers(w http.ResponseWriter, r *http.Request) {
@@ -17,6 +20,47 @@ func (s *Server) pageAdminUsers(w http.ResponseWriter, r *http.Request) {
 		"Users": users,
 		"Me":    userFrom(r.Context()),
 	})
+}
+
+// pageAdminUserCreate 在注册关闭时仍允许管理员开通普通账号。
+func (s *Server) pageAdminUserCreate(w http.ResponseWriter, r *http.Request) {
+	username := strings.TrimSpace(r.PostFormValue("username"))
+	displayName := strings.TrimSpace(r.PostFormValue("display_name"))
+	password := r.PostFormValue("password")
+	confirm := r.PostFormValue("password_confirm")
+	fail := func(msg string) {
+		s.setFlash(w, "error", msg)
+		http.Redirect(w, r, "/admin/users", http.StatusFound)
+	}
+	if msg := validateNewUser(username, displayName, password, confirm); msg != "" {
+		fail(msg)
+		return
+	}
+	hash, err := auth.HashPassword(password)
+	if err != nil {
+		s.logger.Error("开户密码哈希失败", "err", err)
+		s.renderError(w, r, http.StatusInternalServerError, "服务暂时不可用。")
+		return
+	}
+	u := &model.User{
+		ID: store.NewID(), Username: username, DisplayName: displayName,
+		PasswordHash: hash, Role: model.UserRoleUser, Status: model.StatusActive,
+	}
+	if err := s.store.CreateUser(r.Context(), u); err != nil {
+		if err == store.ErrConflict {
+			fail("用户名已被占用，未修改已有账号。")
+			return
+		}
+		s.logger.Error("管理员开户失败", "err", err)
+		s.renderError(w, r, http.StatusInternalServerError, "服务暂时不可用。")
+		return
+	}
+	s.audit(r, &model.AuditLog{
+		Event: "user_created", ActorUserID: userFrom(r.Context()).ID,
+		SubjectUserID: u.ID, Detail: username,
+	})
+	s.setFlash(w, "success", "普通账号已开通，请通过团队受控渠道交付登录信息。")
+	http.Redirect(w, r, "/admin/users", http.StatusFound)
 }
 
 func (s *Server) pageAdminDisable(w http.ResponseWriter, r *http.Request) {

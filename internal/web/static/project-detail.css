@@ -1,0 +1,22 @@
+/* 频道详情：信息与引导并列，正文数据保持完整，仅限制预览的显示高度。 */
+.project-detail-top { display: grid; grid-template-columns: minmax(0, 2fr) minmax(0, 3fr); gap: 20px; align-items: start; margin-bottom: 20px; }
+.project-detail-top > .card { margin-bottom: 0; }
+.project-detail-info .kv th { width: 88px; padding-left: 0; }
+.project-detail-info .kv td { padding-right: 0; }
+.project-guide-head { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-bottom: 12px; }
+.project-guide-head h2 { margin: 0; min-width: 0; overflow-wrap: anywhere; }
+.project-guide-head .btn { flex: none; }
+.project-guide-meta { display: flex; align-items: center; flex-wrap: wrap; gap: 8px; color: var(--muted); font-size: 12px; margin: 0 0 12px; }
+.project-guide-preview { position: relative; max-height: 144px; overflow: hidden; border-radius: 6px; background: var(--surface-muted); }
+.project-guide-excerpt { margin: 0; padding: 12px 16px; white-space: pre-wrap; overflow-wrap: anywhere; font: inherit; font-size: 13px; line-height: 24px; }
+.project-guide-preview.is-truncated::after { content: ""; position: absolute; left: 0; right: 0; bottom: 0; height: 38px; background: linear-gradient(transparent, var(--surface-muted)); pointer-events: none; }
+.project-guide-excerpt code, .project-guide-fulltext code { padding: 0; background: none; color: inherit; font: inherit; }
+.project-guide-empty { margin: 0; line-height: 1.8; }
+.project-guide-fulltext { margin: 0; white-space: pre-wrap; overflow-wrap: anywhere; font: inherit; font-size: 14px; line-height: 1.9; }
+.project-guide-api { margin: 24px 0 0; padding-top: 16px; border-top: 1px solid var(--border); font-size: 12px; overflow-wrap: anywhere; }
+@media (max-width: 760px) {
+  .project-detail-top { grid-template-columns: minmax(0, 1fr); }
+}
+@media (max-width: 400px) {
+  .project-guide-head { align-items: flex-start; flex-wrap: wrap; }
+}

@@ -1,27 +1,27 @@
 {{define "content"}}
-<h1>审计记录</h1>
-{{if .Data.IsAdmin}}
-<p class="muted">你是管理员，可查看全局审计（最近 {{.Data.Count}} 条）。普通用户只能看到与自己相关的记录。</p>
+<h1>{{.Title}}</h1>
+{{if .Data.Global}}
+<p class="muted">以下是平台内所有账号的审计记录（最近 {{.Data.Count}} 条）。</p>
 {{else}}
-<p class="muted">以下是与你的账号相关的凭证、授权及管理事件，以及你拥有能力上的访问事件（最近 {{.Data.Count}} 条）。</p>
+<p class="muted">以下是与你的账号相关的凭证、协作及管理事件（最近 {{.Data.Count}} 条）。</p>
 {{end}}
 <p class="muted">请求来源与凭证归属用于追溯访问，不代表真人确认了具体动作，也不证明某个 Agent 运行实例的身份。</p>
-<div class="card">
+<div class="card table-panel">
   {{if .Data.Logs}}
   <div class="table-scroll">
-  <table class="audit">
+  <table class="audit responsive-table">
     <thead><tr><th>时间</th><th>事件 / 请求来源</th><th>操作账号</th><th>相关账号</th><th>凭证记录</th><th>目标资源</th><th>范围</th><th>结果 / 原因</th></tr></thead>
     <tbody>
       {{range .Data.Logs}}
       <tr>
-        <td class="muted">{{fmtTime .CreatedAt}}</td>
-        <td data-audit-event="{{.Event}}"><code>{{.Event}}</code><br><span class="muted">{{.Source}}</span>{{if .RequestID}}<span class="muted mono request-id" title="Request ID">{{.RequestID}}</span>{{end}}</td>
-        <td>{{if .ActorUsername}}{{.ActorUsername}}{{else}}<span class="muted">-</span>{{end}}</td>
-        <td>{{if .SubjectUsername}}{{.SubjectUsername}}{{else if .CredentialOwnerUsername}}{{.CredentialOwnerUsername}}{{else if .SubjectUserID}}<code>{{.SubjectUserID}}</code>{{else}}<span class="muted">-</span>{{end}}</td>
-        <td>{{if .CredentialID}}{{.CredentialName}}<br><code class="credential-id">{{.CredentialID}}</code>{{if .CredentialOwnerUsername}}<br><span class="muted">所属账号：{{.CredentialOwnerUsername}}</span>{{end}}{{else}}<span class="muted">-</span>{{end}}</td>
-        <td>{{if .CapabilityID}}能力：{{.CapabilityName}}<br><code>{{.CapabilityID}}</code>{{end}}{{if .ProjectID}}<br>频道：{{.ProjectName}} <code>{{.ProjectID}}</code>{{end}}{{if .ThreadID}}<br>留言板：<code>{{.ThreadID}}</code>{{end}}{{if not (or .CapabilityID .ProjectID .ThreadID)}}<span class="muted">-</span>{{end}}</td>
-        <td>{{.Scope}}</td>
-        <td>{{if eq .Outcome "success"}}<span class="badge ok">成功</span>{{else}}<span class="badge dead">失败</span>{{end}}{{if .Reason}}<br><span class="muted">{{.Reason}}</span>{{end}}</td>
+        <td class="muted" data-label="时间">{{fmtTime .CreatedAt}}</td>
+        <td data-audit-event="{{.Event}}" data-label="事件 / 请求来源"><code>{{.Event}}</code><br><span class="muted">{{.Source}}</span>{{if .RequestID}}<span class="muted mono request-id" title="Request ID">{{.RequestID}}</span>{{end}}</td>
+        <td data-label="操作账号">{{if .ActorUsername}}{{.ActorUsername}}{{else}}<span class="muted">-</span>{{end}}</td>
+        <td data-label="相关账号">{{if .SubjectUsername}}{{.SubjectUsername}}{{else if .CredentialOwnerUsername}}{{.CredentialOwnerUsername}}{{else if .SubjectUserID}}<code>{{.SubjectUserID}}</code>{{else}}<span class="muted">-</span>{{end}}</td>
+        <td data-label="凭证记录">{{if .CredentialID}}{{.CredentialName}}<br><code class="credential-id">{{.CredentialID}}</code>{{if .CredentialOwnerUsername}}<br><span class="muted">所属账号：{{.CredentialOwnerUsername}}</span>{{end}}{{else}}<span class="muted">-</span>{{end}}</td>
+        <td data-label="目标资源">{{if .CapabilityID}}能力：{{.CapabilityName}} <code>{{.CapabilityID}}</code>{{end}}{{if .ProjectID}}<br>频道：{{.ProjectName}} <code>{{.ProjectID}}</code>{{end}}{{if .ThreadID}}<br>帖子：<code>{{.ThreadID}}</code>{{end}}{{if not (or .CapabilityID .ProjectID .ThreadID)}}<span class="muted">-</span>{{end}}</td>
+        <td data-label="范围">{{.Scope}}</td>
+        <td data-label="结果 / 原因">{{if eq .Outcome "success"}}<span class="badge ok">成功</span>{{else}}<span class="badge dead">失败</span>{{end}}{{if .Reason}}<br><span class="muted">{{.Reason}}</span>{{end}}</td>
       </tr>
       {{end}}
     </tbody>

@@ -86,6 +86,47 @@ func (s *Store) ListProjects(ctx context.Context) ([]*model.Project, error) {
 	return out, rows.Err()
 }
 
+// ListProjectsPage 分页列出频道，排序与 ListProjects 一致（活跃在前、更新时间倒序）。
+// limit<=0 表示不限量（仅跳过 offset），offset<0 视为 0；total 始终为频道总数，
+// 不受 limit/offset 影响。参数合法性由调用方（API 层）负责校验。
+func (s *Store) ListProjectsPage(ctx context.Context, limit, offset int) ([]*model.Project, int, error) {
+	var total int
+	if err := s.db.QueryRowContext(ctx, `SELECT COUNT(*) FROM projects`).Scan(&total); err != nil {
+		return nil, 0, err
+	}
+	if offset < 0 {
+		offset = 0
+	}
+	q := `SELECT ` + projectColumns + projectFrom + ` ORDER BY p.status='archived', p.updated_at DESC`
+	args := []any{}
+	if limit > 0 {
+		q += ` LIMIT ?`
+		args = append(args, limit)
+	}
+	if offset > 0 {
+		// SQLite 要求 OFFSET 必须与 LIMIT 同现；-1 表示不限量。
+		if limit <= 0 {
+			q += ` LIMIT -1`
+		}
+		q += ` OFFSET ?`
+		args = append(args, offset)
+	}
+	rows, err := s.db.QueryContext(ctx, q, args...)
+	if err != nil {
+		return nil, 0, err
+	}
+	defer rows.Close()
+	var out []*model.Project
+	for rows.Next() {
+		p, err := scanProject(rows)
+		if err != nil {
+			return nil, 0, err
+		}
+		out = append(out, p)
+	}
+	return out, total, rows.Err()
+}
+
 // SetProjectStatus 归档/恢复频道。
 func (s *Store) SetProjectStatus(ctx context.Context, id, status string) error {
 	res, err := s.db.ExecContext(ctx, `UPDATE projects SET status=?, updated_at=? WHERE id=?`,

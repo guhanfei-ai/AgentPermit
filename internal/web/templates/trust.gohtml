@@ -1,0 +1,46 @@
+{{define "content"}}
+<div data-trust-page data-state="{{.Data.State}}" data-now="{{.Data.Now}}" {{with .Data.Holiday}}data-trigger="{{.TriggerAt.Unix}}" data-lock="{{.LockAt.Unix}}" data-end="{{.EndsAt.Unix}}"{{end}}>
+ <div data-holiday-countdown class="trust-countdown" role="status" {{if ne .Data.State "countdown"}}hidden{{end}}>节假日封网倒计时：<strong data-holiday-seconds>10</strong> 秒</div>
+ <div data-trust-content {{if eq .Data.State "active"}}inert class="trust-grey"{{end}}>
+ <div class="page-head trust-heading"><h1>AI身份授信</h1>
+ {{if ne .Data.State "active"}}<div class="page-actions">{{if .Data.History}}<a class="btn btn-quiet" href="/trust">查看当前生效清单</a>{{else}}<a class="btn btn-quiet" href="/trust?history=1">查看全部历史记录</a>{{end}}{{if .Data.CanManage}}<button type="button" class="btn btn-primary" data-trust-open="grant-create"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 5v14M5 12h14"/></svg>新增授信</button>{{end}}</div>{{end}}
+ </div>
+ {{with .Data.Holiday}}<p class="page-description">最近节假日计划：{{.Reason}} · 倒计时开始 {{trustTime .TriggerAt}} · 正式封网 {{trustTime .LockAt}} · 自动解除 {{trustTime .EndsAt}}</p>{{end}}
+ {{if ne .Data.State "active"}}
+ <p class="page-description">时间均为北京时间。正在工作表示当前可用，最近核验单独展示。</p>
+ <section class="card table-panel trust-section trust-grants"><h2>正在工作凭证清单{{if .Data.History}}（含历史）{{end}}</h2>
+ <div class="table-scroll"><table class="responsive-table"><thead><tr><th>人员 / AI凭证</th><th>Server</th><th>签发人 / 时间</th><th>到期时间</th><th>最近核验</th><th>状态</th><th>操作</th></tr></thead><tbody>{{range .Data.Grants.Items}}<tr>
+ <td data-label="人员 / AI凭证"><a href="/trust/grants/{{.ID}}">{{.UserName}} / {{.CredentialName}}</a><br><code>{{.TokenHint}}</code></td><td data-label="Server">{{.ServerName}}{{with .GroupName}}<br><span class="muted">编组：{{.}}</span>{{end}}</td><td data-label="签发人 / 时间">{{.IssuerName}}<br>{{trustTime .IssuedAt}}</td><td data-label="到期时间">{{trustTime .EffectiveExpiresAt}}</td><td data-label="最近核验">{{trustTime .LastCheckedAt}}</td><td data-label="状态">{{trustReason .Denial}}</td><td class="actions" data-label="操作"><a href="/trust/grants/{{.ID}}" class="btn btn-small">详情</a>{{if and $.Data.CanManage .RevokedAt.IsZero}} <form method="post" action="/trust/grants/{{.ID}}/revoke" class="inline-form" data-confirm="撤销这条临时授信？原始AI凭证与其他授信保持各自状态。"><input type="hidden" name="csrf_token" value="{{$.CSRFToken}}"><button class="btn btn-small btn-danger">撤销授信</button></form>{{end}}</td>
+ </tr>{{else}}<tr class="empty-row"><td colspan="7" class="empty">暂无符合条件的临时授信凭证。</td></tr>{{end}}</tbody></table></div>{{template "trust-pagination" .Data.Grants}}</section>
+ <section class="trust-management" aria-labelledby="ban-management-title"><div class="section-head"><h2 id="ban-management-title">封禁管理</h2>
+ {{if .Data.CanManage}}<div class="trust-actions"><button type="button" class="btn btn-danger" data-trust-open="ban-create" data-kind="person">全局封人</button><button type="button" class="btn btn-danger" data-trust-open="ban-create" data-kind="credential">全局封AI</button><button type="button" class="btn" data-trust-open="ban-create" data-kind="condition">条件封禁</button><button type="button" class="btn" data-trust-open="holiday-create">节假日封网</button></div>{{end}}
+ </div>{{range .Data.BanSections}}{{template "trust-ban-table" .}}{{end}}</section>
+ {{else}}<div class="trust-locked-placeholder"><h2>正在工作凭证清单</h2><hr><h2>封禁人员清单</h2><hr><h2>封禁AI凭证清单</h2><hr><h2>条件封禁清单</h2></div>{{end}}
+ </div>
+ <section data-holiday-lock class="trust-lock" {{if ne .Data.State "active"}}hidden{{end}} aria-label="节假日封网状态"><div><h2>节假日封网生效中</h2><p>所有人员名下AI暂停工作，真人登录和其他页面查看保持可用。</p>{{with .Data.Holiday}}<p>自动解除：{{trustTime .EndsAt}}</p>{{end}}{{if .Data.CanManage}}<button class="btn btn-primary trust-unlock" type="button" data-trust-open="holiday-unlock">解锁节假日封网</button>{{else}}<p>管理员可输入全局封网解锁密码提前解锁。</p>{{end}}</div></section>
+</div>
+
+{{if .Data.CanManage}}
+<dialog id="holiday-unlock" class="trust-dialog" aria-labelledby="holiday-unlock-title"><div class="trust-dialog-head"><h2 id="holiday-unlock-title">解锁节假日封网</h2><button type="button" class="btn" data-trust-close>关闭</button></div><form method="post" action="/trust/holiday/unlock" class="form"><input type="hidden" name="csrf_token" value="{{.CSRFToken}}"><label>全局封网解锁密码<input type="password" name="password" required autocomplete="off"></label><button class="btn btn-primary">解锁本次节假日封网</button></form></dialog>
+{{if ne .Data.State "active"}}
+<dialog id="grant-create" class="trust-dialog" aria-labelledby="grant-create-title"><div class="trust-dialog-head"><h2 id="grant-create-title">新增授信</h2><button type="button" class="btn" data-trust-close>关闭</button></div><form method="post" action="/trust/grants" class="form" data-trust-credential-form><input type="hidden" name="csrf_token" value="{{.CSRFToken}}">
+ <label>选择人<select name="user_id" required data-trust-person><option value="">请选择人员</option>{{range .Data.Users}}{{if .IsActive}}<option value="{{.ID}}">{{.DisplayName}}（{{.Username}}）</option>{{end}}{{end}}</select></label>
+ <label>选择该人员名下的凭证<select name="credential_id" required data-trust-credential><option value="">请先选择人员</option>{{range .Data.Credentials}}<option value="{{.ID}}" data-owner="{{.OwnerUserID}}">{{.Name}} · {{.TokenHint}}</option>{{end}}</select></label>
+ <label>指定Server<select name="server_id" required data-trust-server><option value="">请选择Server</option>{{range .Data.Servers}}{{if eq .Status "active"}}<option value="{{.ID}}">{{.Name}} · {{.Environment}}</option>{{end}}{{end}}</select></label>
+ <label>变量编组（可选）<select name="field_group_id" data-trust-group><option value="">不申报编组</option>{{range .Data.FieldGroups}}<option value="{{.ID}}" data-server="{{.ServerID}}">{{.Name}}</option>{{end}}</select></label>
+ <label>编组申报值（JSON对象，选择编组时按定义填写）<textarea name="field_values" rows="3" placeholder='{"ENV":"prod","项目名称":"example"}'></textarea></label>
+ <p class="muted">有效期固定为5分钟（300秒），由服务端统一下达，到期后可重新签发新凭证。</p><button class="btn btn-primary">签发临时凭证</button>
+</form></dialog>
+<dialog id="ban-create" class="trust-dialog" aria-labelledby="ban-create-title"><div class="trust-dialog-head"><h2 id="ban-create-title">封禁管理</h2><button type="button" class="btn" data-trust-close>关闭</button></div><form method="post" action="/trust/bans" class="form" data-trust-credential-form data-trust-ban-form><input type="hidden" name="csrf_token" value="{{.CSRFToken}}"><input type="hidden" name="kind" value="person">
+ <label>名称<input type="text" name="name" required maxlength="128"></label>
+ <label>人员<select name="user_id" data-trust-person><option value="">不限定人员</option>{{range .Data.Users}}<option value="{{.ID}}">{{.DisplayName}}（{{.Username}}）</option>{{end}}</select></label>
+ <label data-ban-field="credential">AI凭证<select name="credential_id" data-trust-credential><option value="">不限定凭证</option>{{range .Data.Credentials}}<option value="{{.ID}}" data-owner="{{.OwnerUserID}}">{{.Name}} · {{.TokenHint}}</option>{{end}}</select></label>
+ <label data-ban-field="condition">Server<select name="server_id"><option value="">所有Server</option>{{range .Data.Servers}}<option value="{{.ID}}">{{.Name}} · {{.Environment}}</option>{{end}}</select></label>
+ <label data-ban-field="condition">环境<input type="text" name="environment" maxlength="64" placeholder="留空不限"></label>
+ <label data-ban-field="condition"><input type="checkbox" name="all_scope" value="yes"> 确认允许规则覆盖全辖区（对象与范围均为空时必选）</label>
+ <label>原因<textarea name="reason" required maxlength="500"></textarea></label><div class="grid-2"><label>生效时间（留空立即生效）<input type="datetime-local" name="starts_at" step="1"></label><label>截止时间（留空长期）<input type="datetime-local" name="expires_at" step="1"></label></div><button class="btn btn-danger">保存封禁</button>
+</form></dialog>
+<dialog id="holiday-create" class="trust-dialog" aria-labelledby="holiday-create-title"><div class="trust-dialog-head"><h2 id="holiday-create-title">节假日封网</h2><button type="button" class="btn" data-trust-close>关闭</button></div><form method="post" action="/trust/holiday" class="form"><input type="hidden" name="csrf_token" value="{{.CSRFToken}}"><label>倒计时开始（北京时间，留空立即触发）<input type="datetime-local" name="trigger_at" step="1"></label><p class="muted">触发后闪烁倒计时10秒，归零统一封网。</p><label>自动解除时间（北京时间）<input type="datetime-local" name="ends_at" step="1" required value="{{.Data.Defaults.HolidayEnd}}"></label><label>原因<textarea name="reason" required maxlength="500"></textarea></label><button class="btn btn-danger">设置节假日封网</button></form></dialog>
+{{end}}{{end}}
+<link rel="stylesheet" href="/static/trust.css"><script src="/static/trust.js" defer></script>
+{{end}}

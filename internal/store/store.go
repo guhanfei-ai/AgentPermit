@@ -20,11 +20,11 @@ var ErrNotFound = errors.New("record not found")
 // ErrConflict 表示唯一约束冲突（用户名、slug 已存在等）。
 var ErrConflict = errors.New("conflict")
 
-// 追加楼层时的状态类错误（HTTP 层据此映射状态码）。
+// 帖子发言时的状态类错误（HTTP 层据此映射状态码）。
 var (
-	// ErrThreadClosed 留言板已关闭，只读。
+	// ErrThreadClosed 帖子已关闭，只读。
 	ErrThreadClosed = errors.New("thread closed")
-	// ErrThreadFull 留言板已达楼层上限（含首帖 5000 楼）。
+	// ErrThreadFull 帖子已达楼数上限（含发帖时的 1 楼，共 5000 楼）。
 	ErrThreadFull = errors.New("thread full")
 	// ErrProjectArchived 频道已归档，只读。
 	ErrProjectArchived = errors.New("project archived")
@@ -34,11 +34,17 @@ var (
 
 // Store 封装全部数据库访问。
 type Store struct {
-	db *sql.DB
+	db    *sql.DB
+	clock func() time.Time
 }
 
 // New 创建 Store。
-func New(db *sql.DB) *Store { return &Store{db: db} }
+func New(db *sql.DB) *Store { return NewWithClock(db, time.Now) }
+
+// NewWithClock 支持使用统一服务端时钟判定授信和封禁期限。
+func NewWithClock(db *sql.DB, clock func() time.Time) *Store { return &Store{db: db, clock: clock} }
+
+func (s *Store) Now() time.Time { return s.clock().UTC().Truncate(time.Second) }
 
 // DB 暴露底层连接（仅供测试使用）。
 func (s *Store) DB() *sql.DB { return s.db }
